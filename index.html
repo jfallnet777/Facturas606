@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Factura 606</title>
+<meta name="theme-color" content="#0f5132">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>Factura 606</h1>
+  <div class="hdr-right">
+    <label class="periodo">Período
+      <input type="month" id="periodo">
+    </label>
+    <button id="btnAjustes" class="icon" title="Ajustes" aria-label="Ajustes">⚙</button>
+  </div>
+</header>
+
+<main>
+  <section class="scan">
+    <button class="btn-scan" id="btnQR">🔳 Escanear QR</button>
+    <label class="btn-scan alt" for="fileAny">📷 Foto / PDF</label>
+    <input type="file" id="fileAny" accept="image/*,application/pdf" multiple hidden>
+    <button class="btn-scan alt" id="btnManual">✍ Manual</button>
+  </section>
+
+  <div id="cola" class="cola"></div>
+
+  <section class="totales" id="totales"></section>
+
+  <section id="lista" class="lista"></section>
+
+  <section class="export">
+    <button id="btnTxt">⬇ TXT DGII</button>
+    <button id="btnCsv">⬇ Excel (CSV)</button>
+    <button id="btnBackup">💾 Respaldo</button>
+    <label class="btnlike" for="fileImport">📂 Restaurar</label>
+    <input type="file" id="fileImport" accept="application/json" hidden>
+  </section>
+  <p class="aviso">Orden de lectura: código QR → texto de la factura (OCR) → manual. Revisa cada factura antes de exportar; la lectura automática puede equivocarse, y la clasificación fiscal es responsabilidad tuya o de tu contador.</p>
+</main>
+
+<!-- Ajustes -->
+<dialog id="dlgAjustes">
+  <form method="dialog" class="form">
+    <h2>Ajustes</h2>
+    <label>Tu RNC / Cédula (informante)
+      <input type="text" id="cfgRnc" inputmode="numeric" maxlength="11">
+      <small>También sirve para que el lector no confunda tu RNC con el del suplidor.</small>
+    </label>
+    <label>Los montos leídos van por defecto a
+      <select id="cfgDestino">
+        <option value="bienes">Monto en bienes</option>
+        <option value="servicios">Monto en servicios</option>
+      </select>
+    </label>
+    <label>Tipo de gasto por defecto
+      <select id="cfgTipo"></select>
+    </label>
+    <label>Forma de pago por defecto
+      <select id="cfgPago"></select>
+    </label>
+    <div class="acciones">
+      <button value="cancel" class="sec">Cerrar</button>
+      <button value="ok" id="btnGuardarCfg">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Editar factura -->
+<dialog id="dlgFactura">
+  <form method="dialog" class="form" id="frmFactura">
+    <h2 id="tituloFactura">Factura</h2>
+    <div id="alertas" class="alertas"></div>
+    <label>Suplidor (referencia, no se exporta)<input name="suplidor"></label>
+    <div class="grid2">
+      <label>RNC / Cédula<input name="rnc" inputmode="numeric" maxlength="11" required></label>
+      <label>Tipo ID<select name="tipoId"><option value="1">1 - RNC</option><option value="2">2 - Cédula</option></select></label>
+      <label>NCF / e-NCF<input name="ncf" maxlength="13" required style="text-transform:uppercase"></label>
+      <label>NCF modificado<input name="ncfMod" maxlength="13" style="text-transform:uppercase"></label>
+      <label>Fecha comprobante<input name="fecha" type="date" required></label>
+      <label>Fecha de pago<input name="fechaPago" type="date"></label>
+    </div>
+    <label>Tipo de bienes y servicios<select name="tipoBS"></select></label>
+    <div class="desglose">
+      <label>Total en la factura<input name="total" type="number" step="0.01" min="0"></label>
+      <label class="chk"><input type="checkbox" id="chkPropina"> Incluye 10% de ley</label>
+      <button type="button" id="btnDesglosar" class="sec">Desglosar ITBIS 18%</button>
+    </div>
+    <div class="grid2">
+      <label>Monto servicios<input name="servicios" type="number" step="0.01" min="0"></label>
+      <label>Monto bienes<input name="bienes" type="number" step="0.01" min="0"></label>
+      <label>ITBIS facturado<input name="itbis" type="number" step="0.01" min="0"></label>
+      <label>Propina legal<input name="propina" type="number" step="0.01" min="0"></label>
+    </div>
+    <details>
+      <summary>Retenciones, ITBIS especial y otros impuestos</summary>
+      <div class="grid2">
+        <label>ITBIS retenido<input name="itbisRet" type="number" step="0.01" min="0"></label>
+        <label>ITBIS proporcionalidad (Art. 349)<input name="itbisProp" type="number" step="0.01" min="0"></label>
+        <label>ITBIS llevado al costo<input name="itbisCosto" type="number" step="0.01" min="0"></label>
+        <label>ITBIS percibido<input name="itbisPerc" type="number" step="0.01" min="0"></label>
+        <label>Tipo retención ISR<select name="tipoRetIsr"></select></label>
+        <label>Monto retención renta<input name="retIsr" type="number" step="0.01" min="0"></label>
+        <label>ISR percibido<input name="isrPerc" type="number" step="0.01" min="0"></label>
+        <label>Selectivo (ISC)<input name="isc" type="number" step="0.01" min="0"></label>
+        <label>Otros impuestos/tasas<input name="otros" type="number" step="0.01" min="0"></label>
+      </div>
+    </details>
+    <label>Forma de pago<select name="formaPago"></select></label>
+    <label>Notas<textarea name="notas" rows="2"></textarea></label>
+    <a id="lnkDGII" href="#" target="_blank" rel="noopener" class="lnk" hidden>🔎 Verificar este e-CF en la DGII</a>
+    <details id="detTexto" hidden>
+      <summary>Texto leído de la factura</summary>
+      <pre id="txtLeido"></pre>
+    </details>
+    <p class="calc" id="calcFactura"></p>
+    <div class="acciones">
+      <button value="del" class="peligro" id="btnBorrar">Borrar</button>
+      <button value="cancel" class="sec" formnovalidate>Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Escáner QR -->
+<dialog id="dlgQR">
+  <div class="form">
+    <h2>Apunta al código QR de la factura</h2>
+    <div class="visor"><video id="video" playsinline muted></video><div class="marco"></div></div>
+    <p class="calc" id="estadoQR">Abriendo cámara…</p>
+    <div class="acciones">
+      <button type="button" class="sec" id="btnCerrarQR">Cancelar</button>
+      <label class="btnlike" for="fileFoto">No tiene QR → leer texto</label>
+      <input type="file" id="fileFoto" accept="image/*" capture="environment" hidden>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast"></div>
+<script src="catalogos.js"></script>
+<script src="lector.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
