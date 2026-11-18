@@ -290,7 +290,7 @@ function extraerDeTexto(texto, rncPropio) {
       const v = montoEtiquetado(LU, i); if (v != null) totales.push(v);
     }
   });
-  out.itbis = itbisTotal ?? itbisUlt ?? 0;
+  out.itbis = itbisTotal != null ? itbisTotal : itbisUlt != null ? itbisUlt : 0;
   out.total = totales.length ? Math.max(...totales) : 0;
   if (!out.subtotal && out.total) {
     const s = Math.round((out.total - out.itbis - out.propina) * 100) / 100;

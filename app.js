@@ -2,6 +2,58 @@
 // Factura 606 — versión para contadores con varios clientes.
 
 // =====================================================================
+//  Versión y protección contra archivos mezclados
+// =====================================================================
+const VERSION_APP = "2026.11.18-5";
+
+async function limpiarYRecargar() {
+  try {
+    if ("serviceWorker" in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    if ("caches" in window) for (const k of await caches.keys()) await caches.delete(k);
+  } catch {}
+  location.replace(location.pathname + "?act=" + Date.now() + location.hash);
+}
+
+// Si algo falla al iniciar, mostrar qué pasó en vez de dejar la pantalla vacía
+let _errorMostrado = false;
+function pantallaError(detalle) {
+  if (_errorMostrado || String(detalle).includes("__recargando__")) return;
+  _errorMostrado = true;
+  const d = document.createElement("div");
+  d.setAttribute("role", "alert");
+  d.style.cssText = "position:fixed;inset:0;z-index:9999;background:#EEF3FB;color:#0F1B3D;font:16px/1.45 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px";
+  d.innerHTML = `<div style="max-width:420px;background:#fff;border-radius:20px;padding:24px;box-shadow:0 8px 30px rgba(15,27,61,.15)">
+    <h2 style="margin:0 0 8px;font-size:1.25rem">La app no terminó de cargar</h2>
+    <p style="margin:0 0 14px;color:#46536E">Casi siempre es porque el celular mezcló archivos viejos con nuevos después de una actualización. Toca <b>Actualizar ahora</b>. Tus clientes y facturas no se borran.</p>
+    <button id="errAct" style="width:100%;padding:14px;border:0;border-radius:12px;background:#1A56DB;color:#fff;font-weight:700;font-size:1rem;margin-bottom:8px">Actualizar ahora</button>
+    <button id="errResp" style="width:100%;padding:12px;border:1.5px solid #1A56DB;border-radius:12px;background:#fff;color:#1A56DB;font-weight:700">Guardar un respaldo de mis datos</button>
+    <p style="margin:14px 0 0;font-size:.8rem;color:#66728C">Detalle: <span id="errDet"></span><br>Versión del código: ${VERSION_APP}, de la página: ${document.documentElement.dataset.version || "anterior"}</p>
+  </div>`;
+  document.body.appendChild(d);
+  d.querySelector("#errDet").textContent = String(detalle).slice(0, 200);
+  d.querySelector("#errAct").onclick = limpiarYRecargar;
+  d.querySelector("#errResp").onclick = () => {
+    const datos = {};
+    try { for (const k of Object.keys(localStorage)) if (k.startsWith("f606_")) datos[k] = localStorage.getItem(k); } catch {}
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: "factura606-crudo", datos }, null, 1)], { type: "application/json" }));
+    a.download = "respaldo_factura606_emergencia.json"; document.body.appendChild(a); a.click(); a.remove();
+  };
+}
+window.addEventListener("error", (e) => pantallaError(e.message || e.error || "error desconocido"));
+
+// La página (index.html) y el código deben ser de la misma versión
+(() => {
+  const vPagina = document.documentElement.dataset.version;
+  if (vPagina === VERSION_APP) { try { sessionStorage.removeItem("f606_rep"); } catch {} return; }
+  let yaIntento = false;
+  try { yaIntento = !!sessionStorage.getItem("f606_rep"); sessionStorage.setItem("f606_rep", "1"); } catch {}
+  if (!yaIntento) { limpiarYRecargar(); throw new Error("__recargando__"); }
+  pantallaError(`El index.html que entrega GitHub es de otra versión (${vPagina || "anterior"}). Sube de nuevo todos los archivos, incluido index.html.`);
+  throw new Error("__recargando__");
+})();
+
+// =====================================================================
 //  Estado y almacenamiento
 // =====================================================================
 const $ = (s, r = document) => r.querySelector(s);
@@ -22,6 +74,7 @@ const hoy = new Date();
 const perDefecto = (() => { const d = new Date(hoy.getFullYear(), hoy.getMonth() - (hoy.getDate() <= 15 ? 1 : 0), 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; })();
 let periodo = almacen.leer("f606_periodo", null) || perDefecto;
 let filtro = "todas", busqueda = "", busquedaCli = "";
+let rango = null; // período de exportación {d, h}; null = el mes del panel
 
 // Migración desde la versión de un solo usuario
 if (!clientes.length && facturas.length) {
@@ -47,7 +100,7 @@ const n = (v) => { const x = parseFloat(v); return isNaN(x) ? 0 : Math.round(x *
 const r2 = (x) => Math.round(x * 100) / 100;
 const money = (v) => n(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const soloDigitos = (s) => String(s || "").replace(/\D/g, "");
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const mesNombre = (p) => { const [a, m] = p.split("-"); return `${MESES[+m - 1].toLowerCase()} ${a}`; };
 const iniciales = (s) => (String(s || "?").replace(/\b(SRL|SAS|SA|EIRL|DE|DEL|LA|EL|LOS|LAS)\b/gi, "").match(/[A-Za-zÁÉÍÓÚÑ0-9]+/g) || ["?"]).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -127,7 +180,7 @@ function aplicarMemoria(f, cl = cliente()) {
   const rnc = soloDigitos(f.rnc);
   if (!rnc) return f;
   if (!f.suplidor && sup[rnc]) f.suplidor = sup[rnc];
-  const m = cl?.memo?.[rnc];
+  const m = cl && cl.memo ? cl.memo[rnc] : null;
   if (m) { f.tipoBS = m.tipoBS || f.tipoBS; f.formaPago = m.formaPago || f.formaPago; f._destino = m.destino; f._calc = m.calc; }
   return f;
 }
@@ -135,7 +188,7 @@ function recordar(f, cl) {
   const rnc = soloDigitos(f.rnc);
   if (!rnc || !cl) return;
   if (f.suplidor) sup[rnc] = f.suplidor;
-  cl.memo ||= {};
+  if (!cl.memo) cl.memo = {};
   cl.memo[rnc] = {
     tipoBS: f.tipoBS, formaPago: f.formaPago,
     destino: n(f.servicios) > n(f.bienes) ? "servicios" : "bienes",
@@ -186,7 +239,7 @@ const necesitaRevision = (f) => validar(f).length > 0;
 function estadoCliente(c, per = periodo) {
   const fs = facturasDe(c.id, per);
   const rev = fs.filter(necesitaRevision).length;
-  if (c.enviados?.[per]) return { k: "enviado", t: "Enviado", fs, rev };
+  if (c.enviados && c.enviados[per]) return { k: "enviado", t: "Enviado", fs, rev };
   if (!fs.length) return { k: "vacio-e", t: "Sin facturas", fs, rev };
   if (rev) return { k: "revisar", t: `${rev} por revisar`, fs, rev };
   return { k: "listo", t: "Listo para exportar", fs, rev };
@@ -231,7 +284,7 @@ function pintarPeriodo() {
   $("#perAnio").textContent = a;
   $("#perInput").value = periodo;
 }
-function setPeriodo(p) { periodo = p; almacen.guardar("f606_periodo", periodo); pintarPeriodo(); render(); }
+function setPeriodo(p) { periodo = p; rango = null; almacen.guardar("f606_periodo", periodo); pintarPeriodo(); render(); }
 function moverPeriodo(d) {
   const [a, m] = periodo.split("-").map(Number);
   const f = new Date(a, m - 1 + d, 1);
@@ -261,35 +314,47 @@ function render() {
   if (vista === "ajustes") renderAjustes();
 }
 
+const IC = {
+  scan: '<svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg>',
+  baja: '<svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg>',
+  alerta: '<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  gente: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.3c2.3.1 4 1.6 4.5 4.2"/></svg>',
+  recibo: '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
+  ok: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>',
+  barras: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  carrito: '<svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h10.2L20 7H6.3"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>',
+  pct: '<svg viewBox="0 0 24 24"><path d="M6 18L18 6"/><circle cx="7.5" cy="7.5" r="2"/><circle cx="16.5" cy="16.5" r="2"/></svg>',
+};
+const ESTADO_CORTO = { enviado: "Enviado", listo: "Listo", revisar: "Por revisar", "vacio-e": "Sin facturas" };
+
 function renderInicio() {
-  const h = hoy.getHours();
   const [a, m] = periodo.split("-").map(Number);
-  $("#saludo").textContent = `${h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches"} · 606 de`;
   $("#heroMes").textContent = MESES[m - 1];
   const limite = new Date(a, m, 15);
   const dias = Math.round((new Date(limite.getFullYear(), limite.getMonth(), limite.getDate()) - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 864e5);
   const est = clientes.map((c) => ({ c, e: estadoCliente(c) }));
   const env = est.filter((x) => x.e.k === "enviado").length;
-  const plazo = dias < 0 ? `Venció el 15 de ${MESES[limite.getMonth()].toLowerCase()}` : dias === 0 ? "El 606 vence hoy" : dias === 1 ? "Vence mañana" : `Vence en ${dias} días`;
-  $("#pills").innerHTML = `<span class="pill fuerte">${plazo}</span>` + (clientes.length ? `<span class="pill">${env} de ${clientes.length} enviados</span>` : "");
+  const vence = `15 de ${MESES[limite.getMonth()].toLowerCase()}`;
+  const plazo = dias < 0 ? `Venció el ${vence}` : dias === 0 ? "Vence hoy" : `Vence el ${vence}, faltan ${dias} día${dias === 1 ? "" : "s"}`;
+  $("#pills").innerHTML = `<span class="pill ${dias >= 0 && dias <= 3 ? "alerta" : "fuerte"}">${plazo}</span>` + (clientes.length ? `<span class="pill">${env} de ${clientes.length} enviados</span>` : "");
 
-  const todas = clientes.flatMap((c) => facturasDe(c.id));
+  // Bloques de color hechos con CSS
+  const todas = clientes.reduce((acc, c) => acc.concat(facturasDe(c.id)), []);
   const totRev = est.reduce((s, x) => s + x.e.rev, 0);
   const adel = todas.reduce((s, f) => s + itbisPorAdelantar(f), 0);
-  const compacto = (v) => v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e4 ? (v / 1e3).toFixed(1) + "k" : money(v);
-  $("#cifras").innerHTML = `<div><b>${todas.length}</b><small>facturas</small></div>
-    <div><b class="${totRev ? "n-aviso" : ""}">${totRev}</b><small>por revisar</small></div>
-    <div><b title="${money(adel)}">${compacto(adel)}</b><small>ITBIS por adelantar</small></div>`;
+  const bloque = (i, valor, texto, titulo) => `<div class="bloque-c" style="--c:${COLORES[i].c};--t:${COLORES[i].t}"${titulo ? ` title="${titulo}"` : ""}><b>${valor}</b><small>${texto}</small></div>`;
+  $("#cifras").innerHTML = bloque(1, clientes.length, "Clientes") + bloque(2, todas.length, "Facturas del mes") +
+    bloque(0, totRev, "Por revisar") + bloque(3, `<small>RD$</small>${money(adel)}`, "ITBIS por adelantar", "RD$ " + money(adel)).replace('class="bloque-c"', 'class="bloque-c ancho"');
 
   if (!clientes.length) {
     $("#pila").innerHTML = `<button class="carpeta nueva" data-accion="nuevo-cliente"><span class="tab"></span><span class="cuerpo"><b>Agrega tu primer cliente</b><br><small>Cada cliente es una carpeta con su propio 606</small></span></button>`;
     $("#masCarpetas").hidden = true; return;
   }
-  // Pila: atrás un enviado y los pendientes; adelante (abierta) el más urgente
+  // Pila: atrás un enviado y algunos pendientes; adelante, abierta, la más urgente
   const orden = { revisar: 0, listo: 1, "vacio-e": 2, enviado: 3 };
   const pend = est.filter((x) => x.e.k !== "enviado").sort((x, y) => orden[x.e.k] - orden[y.e.k] || (y.c.ultimo || 0) - (x.c.ultimo || 0));
   const frente = pend[0] || est[0];
-  const atras = [...est.filter((x) => x.e.k === "enviado").slice(0, 1), ...pend.slice(1, 3).reverse()].filter((x) => x !== frente);
+  const atras = est.filter((x) => x.e.k === "enviado").slice(0, 1).concat(pend.slice(1, 3).reverse()).filter((x) => x !== frente);
   $("#pila").innerHTML = atras.map((x, i) => carpetaHTML(x.c, x.e, i % 3)).join("") + carpetaAbierta(frente.c, frente.e, atras.length % 3);
   const resto = clientes.length - atras.length - 1;
   const vacios = est.filter((x) => x.e.k === "vacio-e").length;
@@ -297,14 +362,14 @@ function renderInicio() {
   $("#masCarpetas").innerHTML = `<span>${resto} carpeta${resto === 1 ? "" : "s"} más${vacios ? `, ${vacios} sin facturas` : ""}</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>`;
 }
 
-function carpetaHTML(c, e, variante = 0) {
+function carpetaHTML(c, e, variante) {
   const itbis = e.fs.reduce((s, f) => s + itbisPorAdelantar(f), 0);
-  return `<button class="carpeta t${variante + 1}" style="${vars(c)}" data-cliente="${c.id}">
+  return `<button class="carpeta t${(variante || 0) + 1}" style="${vars(c)}" data-cliente="${c.id}">
     <span class="tab"></span>
-    <span class="cuerpo">
-      <span style="min-width:0"><span class="nombre">${esc(c.nombre)}</span><span class="sub mono">${esc(c.rnc)}${e.fs.length ? `, ${e.fs.length} fact.` : ""}</span></span>
+    <span class="cuerpo"><span class="fila-c">
+      <span><span class="nombre">${esc(c.nombre)}</span><span class="sub mono">${esc(c.rnc)}${e.fs.length ? `, ${e.fs.length} fact.` : ""}</span></span>
       <span class="der"><span class="est">${e.k === "enviado" ? "Enviado ✓" : e.t}</span>${e.fs.length ? `<span class="itb">${money(itbis)}</span>` : ""}</span>
-    </span>
+    </span></span>
   </button>`;
 }
 
@@ -347,8 +412,8 @@ function renderClientes() {
       <button class="btn" data-accion="nuevo-cliente">Agregar cliente</button></div>`;
     return;
   }
-  $("#listaClientes").innerHTML = vis.map(({ c, e }, i) => carpetaHTML(c, e, i % 3)).join("") ||
-    `<div class="vacio"><p>Ningún cliente coincide con “${esc(busquedaCli)}”.</p></div>`;
+  $("#listaClientes").innerHTML = vis.length ? vis.map(({ c, e }, i) => carpetaHTML(c, e, i % 3)).join("")
+    : `<div class="vacio"><p>Ningún cliente coincide con “${esc(busquedaCli)}”.</p></div>`;
 }
 
 function cliHTML(c, e, marcado) {
@@ -363,14 +428,19 @@ function cliHTML(c, e, marcado) {
 function renderCapturar() {
   const cl = cliente(); const fs = facturasDe(cl.id);
   const t = fs.reduce((a, f) => { a.m += n(f.servicios) + n(f.bienes); a.i += n(f.itbis); a.r += n(f.itbisRet) + n(f.retIsr); a.ad += itbisPorAdelantar(f); return a; }, { m: 0, i: 0, r: 0, ad: 0 });
-  $("#capCifras").innerHTML = `<div><b>${fs.length}</b><small>facturas</small></div>
-    <div><b>${money(t.i)}</b><small>ITBIS facturado</small></div>
-    <div><b>${money(t.ad)}</b><small>ITBIS por adelantar</small></div>`;
+  const e = estadoCliente(cl);
+  $("#capCab").className = "carpeta det-cli";
+  $("#capCab").style.cssText = vars(cl);
+  $("#capCab").innerHTML = `<span class="tab"></span><span class="cuerpo"><span><span class="nombre">${esc(cl.nombre)}</span><span class="sub mono">RNC ${esc(cl.rnc)}</span></span>
+    <span class="estado">${e.k === "revisar" ? `${e.rev} por revisar` : ESTADO_CORTO[e.k]}</span></span>`;
+  $("#capCifras").innerHTML = `<div class="cifra"><b>${fs.length}</b><small>facturas</small></div>
+    <div class="cifra"><b>${money(t.i)}</b><small>ITBIS facturado</small></div>
+    <div class="cifra"><b>${money(t.ad)}</b><small>ITBIS por adelantar</small></div>`;
 
   const rev = fs.filter(necesitaRevision);
   const ult = [...fs].sort((a, b) => (b.creada || 0) - (a.creada || 0)).slice(0, 5);
   $("#bandeja").innerHTML = rev.length ? `
-    <button class="revisar" data-accion="revisar-todo">
+    <button class="aviso-rev" data-accion="revisar-todo">
       <span class="punto">${rev.length}</span>
       <span><b>Revisar ${rev.length === 1 ? "la factura marcada" : `las ${rev.length} facturas marcadas`}</b><small>Una tras otra, con “Guardar y siguiente”.</small></span>
     </button>` : "";
@@ -420,34 +490,76 @@ function renderFacturas() {
   if (!vis.length) { $("#listaFacturas").innerHTML = `<div class="vacio"><p>Nada coincide con la búsqueda o el filtro.</p></div>`; $("#pieLista").innerHTML = ""; return; }
 
   const grupos = {};
-  vis.forEach((f) => (grupos[f.fecha || ""] ||= []).push(f));
+  vis.forEach((f) => { const k = f.fecha || ""; (grupos[k] = grupos[k] || []).push(f); });
   $("#listaFacturas").innerHTML = `<div class="filas">${Object.entries(grupos).map(([fe, g]) =>
     `<div class="sep-fecha">${fe ? fechaCorta(fe) : "Sin fecha"}</div>${g.map(filaHTML).join("")}`).join("")}</div>`;
   const sum = vis.reduce((a, f) => { a.i += n(f.itbis); a.t += totalFactura(f); return a; }, { i: 0, t: 0 });
   $("#pieLista").innerHTML = `<div><small>Facturas</small><b>${vis.length}</b></div><div><small>ITBIS</small><b>${money(sum.i)}</b></div><div><small>Total</small><b>${money(sum.t)}</b></div>`;
 }
 
+// ---------- Período de exportación ----------
+const sumarMes = (p, d) => { const [a, m] = p.split("-").map(Number); const f = new Date(a, m - 1 + d, 1); return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}`; };
+const rangoAct = () => rango || { d: periodo, h: periodo };
+function mesesRango() { const { d, h } = rangoAct(); const out = []; for (let p = d; p <= h && out.length < 60; p = sumarMes(p, 1)) out.push(p); return out; }
+const unMes = () => { const { d, h } = rangoAct(); return d === h; };
+const mesCorto = (p) => { const [a, m] = p.split("-"); return `${MESES[+m - 1].slice(0, 3).toLowerCase()} ${a}`; };
+function facturasRango(cid) {
+  const meses = new Set(mesesRango());
+  return facturas.filter((f) => f.clienteId === cid && meses.has(f.periodo)).sort((a, b) => a.periodo.localeCompare(b.periodo) || (a.fecha || "").localeCompare(b.fecha || ""));
+}
+function pintarRango() {
+  const { d, h } = rangoAct();
+  const mesHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+  const usados = facturas.map((f) => f.periodo).filter(Boolean).sort();
+  let ini = sumarMes(mesHoy, -24); if (usados[0] && usados[0] < ini) ini = usados[0];
+  let fin = mesHoy; [periodo, h].forEach((p) => { if (p > fin) fin = p; });
+  const opciones = []; for (let p = fin; p >= ini; p = sumarMes(p, -1)) opciones.push(p);
+  const html = opciones.map((p) => `<option value="${p}">${MESES[+p.slice(5) - 1].slice(0, 3)} ${p.slice(0, 4)}</option>`).join("");
+  $("#expDesde").innerHTML = html; $("#expHasta").innerHTML = html;
+  $("#expDesde").value = d; $("#expHasta").value = h;
+}
+function setRango(d, h) {
+  if (d > h) [d, h] = [h, d];
+  rango = d === periodo && h === periodo ? null : { d, h };
+  renderExportar();
+}
+$("#expDesde").onchange = () => setRango($("#expDesde").value, $("#expHasta").value);
+$("#expHasta").onchange = () => setRango($("#expDesde").value, $("#expHasta").value);
+$("#rangoRapido").onclick = (e) => {
+  const b = e.target.closest("[data-r]"); if (!b) return;
+  const mesHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`, anio = hoy.getFullYear();
+  const r = { actual: [periodo, periodo], anterior: [sumarMes(mesHoy, -1), sumarMes(mesHoy, -1)], tres: [sumarMes(mesHoy, -2), mesHoy],
+    anio: [`${anio}-01`, mesHoy], pasado: [`${anio - 1}-01`, `${anio - 1}-12`] }[b.dataset.r];
+  setRango(r[0], r[1]);
+};
+
 function renderExportar() {
-  $("#expTitulo").textContent = `606 de ${mesNombre(periodo)}`;
+  const { d, h } = rangoAct(), uno = unMes();
+  pintarRango();
+  $("#expTitulo").textContent = uno ? `606 de ${mesNombre(d)}` : `Del ${mesCorto(d)} al ${mesCorto(h)}`;
   // Excel por cliente (todos)
-  const conFact = clientes.filter((c) => facturasDe(c.id).length);
+  const conFact = clientes.filter((c) => facturasRango(c.id).length);
   $("#expTodosTxt").textContent = clientes.length ? `Un archivo para cada cliente con sus facturas de ${mesNombre(periodo)}.` : "Todavía no tienes clientes.";
-  $("#listaExcel").innerHTML = clientes.map((c) => {
-    const e = estadoCliente(c);
-    return `<div class="xrow">
-      <span class="cl-av" style="${vars(c)}">${esc(iniciales(c.nombre))}</span>
-      <span class="x-txt"><b>${esc(c.nombre)}</b><small>${e.fs.length} factura${e.fs.length === 1 ? "" : "s"}${e.rev ? `, ${e.rev} por revisar` : ""}</small></span>
-      <button class="btn sec chico" data-xlsx="${c.id}" ${e.fs.length ? "" : "disabled"} aria-label="Descargar Excel de ${esc(c.nombre)}"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg>Excel</button>
+  $("#listaExcel").innerHTML = `<div class="tr-cab tr-exp" aria-hidden="true"><span>Cliente</span><span>Facturas</span><span>Compras</span><span>ITBIS</span><span></span></div>` + clientes.map((c) => {
+    const fsR = facturasRango(c.id), revR = fsR.filter(necesitaRevision).length;
+    const e = uno ? estadoCliente(c, d) : { fs: fsR, rev: revR, k: !fsR.length ? "vacio-e" : revR ? "revisar" : "listo" };
+    const etiqueta = e.rev ? `${e.rev} por revisar` : uno ? ESTADO_CORTO[e.k] : e.fs.length ? (() => { const k = new Set(e.fs.map((f) => f.periodo)).size; return `Completo, ${k} ${k === 1 ? "mes" : "meses"}`; })() : "Sin facturas";
+    const compras = e.fs.reduce((s, f) => s + n(f.servicios) + n(f.bienes), 0), itb = e.fs.reduce((s, f) => s + n(f.itbis), 0);
+    return `<div class="tr-exp">
+      <span class="td-nom"><span class="cl-av" style="${vars(c)}">${esc(iniciales(c.nombre))}</span><span class="x-txt"><b>${esc(c.nombre)}</b><small>${etiqueta}</small></span></span>
+      <span class="td-info"><span><b>${e.fs.length}</b><small> fact.</small></span><span><small>Compras </small><b>${money(compras)}</b></span><span><small>ITBIS </small><b>${money(itb)}</b></span></span>
+      <button class="btn excel chico" data-xlsx="${c.id}" ${e.fs.length ? "" : "disabled"} aria-label="Descargar Excel de ${esc(c.nombre)}">${IC.baja}Excel</button>
     </div>`;
   }).join("");
   $("#listaExcel").hidden = !clientes.length;
   $("#btnXlsxTodos").hidden = conFact.length < 2;
-  $("#btnXlsxTodos").textContent = `Descargar los ${conFact.length} Excel`;
+  $("#btnXlsxTodos").innerHTML = `${IC.baja}Descargar los ${conFact.length} Excel`;
 
   const cl = cliente();
   $("#expCliente").hidden = !cl;
   if (!cl) return;
-  const e = estadoCliente(cl);
+  const fsC = facturasRango(cl.id);
+  const e = { fs: fsC, rev: fsC.filter(necesitaRevision).length };
   $("#expClienteNombre").textContent = `Más opciones para ${cl.nombre}`;
   const items = [
     cl.rnc ? { ok: true, t: `${cl.nombre}, RNC ${cl.rnc}` } : { ok: false, t: "Falta el RNC del cliente", s: `<a href="#" data-accion="editar-cliente">Agregarlo</a>` },
@@ -458,7 +570,13 @@ function renderExportar() {
   $("#checklist").innerHTML = items.map((i) => `<li class="${i.ok ? "ok" : "mal"}"><span class="ic">${i.ok ? "✓" : "!"}</span><span>${esc(i.t)}${i.s ? `<small>${i.s}</small>` : ""}</span></li>`).join("");
   pintarCasillas();
   $("#expCuenta").textContent = `${e.fs.length} factura${e.fs.length === 1 ? "" : "s"}`;
-  const env = cl.enviados?.[periodo];
+  // Con varios meses: la herramienta de la DGII es de un mes a la vez
+  const meses = new Set(fsC.map((f) => f.periodo)).size;
+  $("#notaRango").hidden = uno;
+  $("#notaRango").textContent = `Elegiste varios meses: el Excel trae una hoja por mes (${meses} con facturas), cada una lista para su herramienta. Copiar, TXT y “Marcar como enviado” funcionan con un solo mes.`;
+  ["#btnCopiarCab", "#btnCopiar", "#btnTxt", "#btnEnviado"].forEach((id) => ($(id).disabled = !uno));
+  $("#btnXlsx").innerHTML = `${IC.baja}${uno ? "Descargar Excel" : "Descargar Excel (una hoja por mes)"}`;
+  const env = cl.enviados ? cl.enviados[d] : null;
   $("#estadoTxt").textContent = env ? `Enviado el ${new Date(env).toLocaleDateString("es-DO")}` : "Para llevar el control en el panel de clientes";
   $("#btnEnviadoTxt").textContent = env ? "Quitar marca de enviado" : "Marcar como enviado";
 }
@@ -484,7 +602,7 @@ document.addEventListener("click", (e) => {
   }
   const fila = e.target.closest(".fila[data-id]");
   if (fila) return abrirFactura(fila.dataset.id);
-  const acc = e.target.closest("[data-accion]")?.dataset.accion;
+  const accEl = e.target.closest("[data-accion]"); const acc = accEl ? accEl.dataset.accion : null;
   if (!acc) return;
   e.preventDefault();
   if (acc === "nuevo-cliente") abrirCliente(null);
@@ -530,7 +648,7 @@ $("#swatches").innerHTML = COLORES.map((k, i) => `<label><input type="radio" nam
 function abrirCliente(id) {
   editCliente = id ? clientes.find((c) => c.id === id) : null;
   const c = editCliente || nuevoCliente();
-  $$("#swatches input").forEach((r) => (r.checked = +r.value === (c.color ?? 0) % COLORES.length));
+  $$("#swatches input").forEach((r) => (r.checked = +r.value === (c.color == null ? 0 : c.color) % COLORES.length));
   ["nombre", "rnc", "tipo", "pago", "destino"].forEach((k) => (frmC[k].value = c[k] || ""));
   $("#tituloCliente").textContent = editCliente ? "Editar cliente" : "Nuevo cliente";
   $("#btnBorrarCliente").hidden = !editCliente;
@@ -570,9 +688,9 @@ function nuevaFactura(extra = {}) {
   const cl = cliente();
   return Object.assign({
     id: uid(), clienteId, periodo, creada: Date.now(), origen: "Manual", suplidor: "", rnc: "", tipoId: "1",
-    tipoBS: cl?.tipo || "02", ncf: "", ncfMod: "", fecha: "", fechaPago: "", total: 0,
+    tipoBS: (cl && cl.tipo) || "02", ncf: "", ncfMod: "", fecha: "", fechaPago: "", total: 0,
     servicios: 0, bienes: 0, itbis: 0, itbisRet: 0, itbisProp: 0, itbisCosto: 0, itbisPerc: 0,
-    tipoRetIsr: "", retIsr: 0, isrPerc: 0, isc: 0, otros: 0, propina: 0, formaPago: cl?.pago || "01", notas: "", qrUrl: "",
+    tipoRetIsr: "", retIsr: 0, isrPerc: 0, isc: 0, otros: 0, propina: 0, formaPago: (cl && cl.pago) || "01", notas: "", qrUrl: "",
   }, extra);
 }
 
@@ -615,7 +733,7 @@ async function leerArchivo(file, it) {
   if (dq) return desdeLectura(dq, file.name);
   let texto = textoPDF;
   if (texto.replace(/\s/g, "").length < 40) { it.texto(`Leyendo el texto de ${file.name}…`); texto = await ocr(canvas, it.progreso); }
-  const d = extraerDeTexto(texto, cliente()?.rnc);
+  const d = extraerDeTexto(texto, cliente() ? cliente().rnc : "");
   if (![d.rnc, d.ncf, d.fecha, d.total || d.subtotal].some(Boolean)) throw new Error("sin datos");
   const f = desdeLectura(d, file.name); f._texto = texto;
   return f;
@@ -747,7 +865,7 @@ function abrirFactura(id, datos) {
   for (const el of frm.elements) {
     if (!el.name) continue;
     const v = base[el.name];
-    el.value = el.type === "number" ? (n(v) ? v : "") : (v ?? "");
+    el.value = el.type === "number" ? (n(v) ? v : "") : (v == null ? "" : v);
   }
   pintarPago();
   $$("#segCalc button").forEach((b) => b.classList.remove("on"));
@@ -771,6 +889,7 @@ function abrirFactura(id, datos) {
   $("#btnGuardar").textContent = rev ? (revIdx === revCola.length - 1 ? "Guardar y terminar" : "Guardar y siguiente") : "Guardar";
   $("#btnGuardarOtra").textContent = rev ? "Saltar" : "Guardar y otra";
   $("#btnGuardarOtra").hidden = !rev && !!editando;
+  $("#btnGuardarOtra").parentElement.classList.toggle("solo", $("#btnGuardarOtra").hidden);
 
   actualizarAvisos();
   if (!$("#dlgFactura").open) $("#dlgFactura").showModal();
@@ -813,7 +932,7 @@ function actualizarAvisos(todo = false) {
     const a = avisos.find((x) => x.campo === s.dataset.e);
     const ver = a && (todo || tocados.has(s.dataset.e) || editando);
     s.textContent = ver ? a.msg : "";
-    s.closest(".campo")?.classList.toggle("invalido", !!ver);
+    { const cp = s.closest(".campo"); if (cp) cp.classList.toggle("invalido", !!ver); }
   });
   const sug = avisos.some((a) => a.campo === "ncf") ? sugerirNCF(frm.ncf.value) : "";
   $("#sugNcf").hidden = !sug;
@@ -860,7 +979,7 @@ $("#sugNcf").onclick = (e) => {
 $("#segCalc").onclick = (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (!n(frm.total.value)) { toast("Escribe primero el total de la factura"); frm.total.focus(); return; }
-  const destino = n(frm.servicios.value) && !n(frm.bienes.value) ? "servicios" : n(frm.bienes.value) && !n(frm.servicios.value) ? "bienes" : (base._destino || cliente()?.destino || "bienes");
+  const destino = n(frm.servicios.value) && !n(frm.bienes.value) ? "servicios" : n(frm.bienes.value) && !n(frm.servicios.value) ? "bienes" : (base._destino || (cliente() && cliente().destino) || "bienes");
   const d = desglose(frm.total.value, b.dataset.c, destino, n(frm.isc.value) + n(frm.otros.value));
   ["bienes", "servicios", "itbis", "propina"].forEach((k) => (frm[k].value = d[k] ? d[k].toFixed(2) : ""));
   $$("#segCalc button").forEach((x) => x.classList.toggle("on", x === b));
@@ -944,7 +1063,7 @@ function valorDGII(c, f, act) {
   if (act && !act.has(c.cas)) return "";
   const v = c.v(f);
   if (c.num) return v || c.cero ? n(v) : "";
-  return v ?? "";
+  return v == null ? "" : v;
 }
 const textoCelda = (v, c) => (typeof v === "number" ? (c.num ? v.toFixed(2) : String(v)) : String(v));
 
@@ -970,7 +1089,10 @@ async function listoParaExportar(lista) {
   const c = lista.filter(necesitaRevision).length;
   return !c || confirmar(`${c} factura${c === 1 ? " tiene" : "s tienen"} datos por revisar. ¿Exportar de todos modos?`, "Exportar");
 }
-function nombreArchivo(ext, cl = cliente()) { return `606_${cl.rnc || cl.nombre.replace(/\W+/g, "_")}_${periodo.replace("-", "")}.${ext}`; }
+function nombreArchivo(ext, cl = cliente()) {
+  const { d, h } = rangoAct(), id = cl.rnc || cl.nombre.replace(/\W+/g, "_");
+  return `606_${id}_${d.replace("-", "")}${d === h ? "" : "-" + h.replace("-", "")}.${ext}`;
+}
 
 function descargar(nombre, contenido, tipo) {
   try {
@@ -983,12 +1105,11 @@ function descargar(nombre, contenido, tipo) {
 }
 
 // Excel con la misma distribución de la herramienta: encabezado en C4:C5 y detalle desde B12
-function excelDe(cl, lista) {
+function hojaDGII(cl, per, lista, nombre) {
   const act = casillasActivas();
-  const per = periodo.replace("-", "");
   const filas = [
     [`Factura 606: ${cl.nombre}`], ["", "", "", "", "Formato de Envío de Compras de Bienes y Servicios"], [],
-    ["RNC o Cédula", "", cl.rnc], ["Periodo", "", per], ["Cantidad Registros", "", ""],
+    ["RNC o Cédula", "", cl.rnc], ["Periodo", "", per.replace("-", "")], ["Cantidad Registros", "", ""],
     [], [], ["", "Detalle"],
     ["", ...COLS_DGII.map((c, i) => (i && COLS_DGII[i - 1].cas === c.cas ? "" : c.cas))],
     ["Líneas", ...COLS_DGII.map((c) => c.h)],
@@ -996,15 +1117,21 @@ function excelDe(cl, lista) {
   ];
   const tipos = ["s", ...COLS_DGII.map((c) => (c.num ? "n" : "s"))];
   const anchos = [12, 13, 8, 34, 16, 16, 11, 5, 11, 5, ...COLS_DGII.slice(9).map((c) => (c.num ? 14 : 30))];
-  // Hoja de detalle: todos los datos, con el nombre del suplidor
-  const det = [["Suplidor", ...COLS_DGII.map((c) => c.h2 || c.h)], ...lista.map((f) => [f.suplidor || "", ...COLS_DGII.map((c) => valorDGII(c, f, null))])];
-  return XLSX_MIN.crear([
-    { nombre: "Pegar en DGII", filas, tipos, anchos, negritas: [0, 3, 4, 5, 9, 10], congelar: 11 },
-    { nombre: "Detalle con suplidor", filas: det, tipos, anchos: [30, ...anchos.slice(1)] },
-  ]);
+  return { nombre, filas, tipos, anchos, negritas: [0, 3, 4, 5, 9, 10], congelar: 11 };
+}
+// Un libro por cliente: una hoja en formato de la herramienta por cada mes con facturas, y una de detalle
+function excelDe(cl, lista) {
+  const porMes = {};
+  lista.forEach((f) => { (porMes[f.periodo] = porMes[f.periodo] || []).push(f); });
+  const meses = Object.keys(porMes).sort();
+  const hojas = meses.map((p) => hojaDGII(cl, p, porMes[p], meses.length === 1 ? "Pegar en DGII" : `606 ${MESES[+p.slice(5) - 1].slice(0, 3)} ${p.slice(0, 4)}`));
+  const tipos = ["s", "s", ...COLS_DGII.map((c) => (c.num ? "n" : "s"))];
+  const det = [["Período", "Suplidor", ...COLS_DGII.map((c) => c.h2 || c.h)], ...lista.map((f) => [f.periodo.replace("-", ""), f.suplidor || "", ...COLS_DGII.map((c) => valorDGII(c, f, null))])];
+  hojas.push({ nombre: "Detalle con suplidor", filas: det, tipos, anchos: [10, 30, ...hojas[0].anchos.slice(1)] });
+  return XLSX_MIN.crear(hojas);
 }
 async function descargarExcel(cl, preguntar = true) {
-  const lista = ordenadas(cl.id);
+  const lista = facturasRango(cl.id);
   if (preguntar && !(await listoParaExportar(lista))) return false;
   if (!lista.length) return false;
   descargar(nombreArchivo("xlsx", cl), excelDe(cl, lista));
@@ -1016,8 +1143,8 @@ $("#listaExcel").onclick = (e) => {
   const cl = clientes.find((c) => c.id === b.dataset.xlsx); if (cl) descargarExcel(cl);
 };
 $("#btnXlsxTodos").onclick = async () => {
-  const lista = clientes.filter((c) => facturasDe(c.id).length);
-  const rev = lista.filter((c) => estadoCliente(c).rev).length;
+  const lista = clientes.filter((c) => facturasRango(c.id).length);
+  const rev = lista.filter((c) => facturasRango(c.id).some(necesitaRevision)).length;
   if (rev && !(await confirmar(`${rev} cliente${rev === 1 ? " tiene" : "s tienen"} facturas por revisar. ¿Descargar todos de todos modos?`, "Descargar"))) return;
   for (const cl of lista) { await descargarExcel(cl, false); await new Promise((r) => setTimeout(r, 450)); }
   toast(`${lista.length} archivos de Excel descargados`);
@@ -1030,10 +1157,10 @@ async function copiar(texto, msg) {
 $("#btnCopiarCab").onclick = () => {
   const cl = cliente();
   if (!cl.rnc) { toast("Falta el RNC del cliente"); return abrirCliente(cl.id); }
-  copiar(`${cl.rnc}\n${periodo.replace("-", "")}`, "Encabezado copiado. Pégalo en la celda C4 de la herramienta.");
+  copiar(`${cl.rnc}\n${rangoAct().d.replace("-", "")}`, "Encabezado copiado. Pégalo en la celda C4 de la herramienta.");
 };
 $("#btnCopiar").onclick = () => {
-  const lista = ordenadas();
+  const lista = facturasRango(clienteId);
   if (!lista.length) return toast("No hay facturas en este período");
   const act = casillasActivas();
   const tsv = lista.map((f) => COLS_DGII.map((c) => textoCelda(valorDGII(c, f, act), c)).join("\t")).join("\n");
@@ -1047,23 +1174,23 @@ function fila606TXT(f) {
     req(itbisPorAdelantar(f)), num(f.itbisPerc), n(f.retIsr) ? f.tipoRetIsr : "", num(f.retIsr), num(f.isrPerc), num(f.isc), num(f.otros), num(f.propina), f.formaPago].join("|");
 }
 $("#btnTxt").onclick = async () => {
-  const cl = cliente(), lista = ordenadas();
+  const cl = cliente(), lista = facturasRango(cl.id);
   if (!cl.rnc) { toast("Falta el RNC del cliente"); return abrirCliente(cl.id); }
   if (!(await listoParaExportar(lista))) return;
-  const per = periodo.replace("-", "");
+  const per = rangoAct().d.replace("-", "");
   descargar(`DGII_F_606_${cl.rnc}_${per}.TXT`, [`606|${cl.rnc}|${per}|${lista.length}`, ...lista.map(fila606TXT)].join("\r\n"), "text/plain");
 };
 $("#btnCsv").onclick = async () => {
-  const lista = ordenadas();
+  const lista = facturasRango(clienteId);
   if (!(await listoParaExportar(lista))) return;
   const q = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
-  const filas = [["Suplidor", ...COLS_DGII.map((c) => c.h2 || c.h)], ...lista.map((f) => [f.suplidor || "", ...COLS_DGII.map((c) => textoCelda(valorDGII(c, f, null), c))])];
+  const filas = [["Período", "Suplidor", ...COLS_DGII.map((c) => c.h2 || c.h)], ...lista.map((f) => [f.periodo.replace("-", ""), f.suplidor || "", ...COLS_DGII.map((c) => textoCelda(valorDGII(c, f, null), c))])];
   descargar(nombreArchivo("csv"), "﻿" + filas.map((r) => r.map(q).join(",")).join("\r\n"), "text/csv");
 };
 $("#btnEnviado").onclick = () => {
-  const cl = cliente(); cl.enviados ||= {};
-  if (cl.enviados[periodo]) delete cl.enviados[periodo]; else cl.enviados[periodo] = Date.now();
-  guardarTodo(); render(); toast(cl.enviados[periodo] ? "Marcado como enviado" : "Marca quitada");
+  const cl = cliente(), p = rangoAct().d; if (!cl.enviados) cl.enviados = {};
+  if (cl.enviados[p]) delete cl.enviados[p]; else cl.enviados[p] = Date.now();
+  guardarTodo(); render(); toast(cl.enviados[p] ? `Marcado como enviado (${mesNombre(p)})` : "Marca quitada");
 };
 
 // =====================================================================
@@ -1084,8 +1211,12 @@ $("#fileImport").onchange = async (e) => {
     if (Array.isArray(d)) { // respaldo de la versión anterior
       if (!cliente()) return toast("Elige primero el cliente al que van esas facturas");
       const ids = new Set(facturas.map((f) => f.id));
-      const nuevas = d.filter((f) => f?.id && !ids.has(f.id)).map((f) => ({ origen: "Manual", ...f, clienteId }));
+      const nuevas = d.filter((f) => f && f.id && !ids.has(f.id)).map((f) => ({ origen: "Manual", ...f, clienteId }));
       facturas.push(...nuevas); guardarTodo(); render(); return toast(`${nuevas.length} facturas restauradas en ${cliente().nombre}`);
+    }
+    if (d.app === "factura606-crudo" && d.datos) { // respaldo de emergencia de la pantalla de error
+      const leer = (k, def) => { try { const v = JSON.parse(d.datos[k]); return v == null ? def : v; } catch { return def; } };
+      d.app = "factura606"; d.clientes = leer("f606_clientes", []); d.facturas = leer("f606_facturas", []); d.sup = leer("f606_suplidores", {});
     }
     if (d.app !== "factura606") throw 0;
     const idsC = new Set(clientes.map((c) => c.id)), idsF = new Set(facturas.map((f) => f.id));
@@ -1129,9 +1260,26 @@ $("#bvEjemplo").onclick = () => { cfg.bienvenida = true; guardarTodo(); $("#dlgB
 $("#dlgBienvenida").addEventListener("cancel", (e) => e.preventDefault());
 
 // Inicio
-try { if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch {}
+// ---------- Actualizaciones ----------
+try {
+  if ("serviceWorker" in navigator) {
+    const habiaSW = !!navigator.serviceWorker.controller;
+    let recargando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!habiaSW || recargando) return;
+      recargando = true; location.reload();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      reg.update();
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update(); });
+    }).catch(() => {});
+  }
+} catch {}
+$("#ajVersion").textContent = VERSION_APP;
+$("#btnActualizar").onclick = () => { toast("Buscando la última versión…"); limpiarYRecargar(); };
 guardarTodo();
 aplicarTema();
 pintarPeriodo();
 irA();
 if (!cfg.bienvenida && !clientes.length) $("#dlgBienvenida").showModal();
+window.__f606listo = true;
