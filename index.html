@@ -1,17 +1,48 @@
 <!DOCTYPE html>
-<html lang="es" data-version="2026.11.18-4">
+<html lang="es" data-version="2026.11.18-5">
 <head>
 <meta charset="utf-8">
+<script>
+/* Vigilante de arranque (ES5, funciona en cualquier navegador): si la app no termina de cargar, muestra un aviso con una salida. */
+(function () {
+  var ultimoError = "";
+  window.addEventListener("error", function (e) { ultimoError = (e && e.message) || (e && e.target && (e.target.src || e.target.href)) || "error"; }, true);
+  function aviso() {
+    if (window.__f606listo || document.getElementById("avisoArranque") || document.querySelector("[role=alert]")) return;
+    var d = document.createElement("div");
+    d.id = "avisoArranque";
+    d.setAttribute("role", "alert");
+    d.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#E4E9EE;color:#1B1D22;font:16px/1.45 system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px";
+    d.innerHTML = '<div style="max-width:420px;background:#fff;border-radius:20px;padding:24px">' +
+      '<h2 style="margin:0 0 8px;font-size:1.25rem">La app no terminó de cargar</h2>' +
+      '<p style="margin:0 0 14px;color:#444C59">Toca <b>Actualizar ahora</b> para descargar todo de nuevo. Tus clientes y facturas no se borran.</p>' +
+      '<button id="avAct" style="width:100%;padding:14px;border:0;border-radius:12px;background:#1B1D22;color:#fff;font-weight:700;font-size:1rem">Actualizar ahora</button>' +
+      '<p style="margin:14px 0 0;font-size:.8rem;color:#5F6876">Detalle: <span id="avDet"></span></p></div>';
+    document.body.appendChild(d);
+    document.getElementById("avDet").textContent = String(ultimoError || "sin detalle").slice(0, 200);
+    document.getElementById("avAct").onclick = function () {
+      var fin = function () { location.replace(location.pathname + "?act=" + new Date().getTime() + location.hash); };
+      try {
+        var tareas = [];
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) tareas.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+        if (window.caches) tareas.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+        Promise.all(tareas).then(fin, fin);
+      } catch (x) { fin(); }
+    };
+  }
+  window.addEventListener("load", function () { setTimeout(aviso, 2500); });
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Factura 606</title>
-<meta name="theme-color" content="#1A56DB">
+<meta name="theme-color" content="#E4E9EE">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2026.11.18-4">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=2026.11.18-5">
 </head>
 <body>
 
@@ -34,7 +65,7 @@
 
 <!-- ================= Navegación ================= -->
 <nav class="nav" aria-label="Módulos">
-  <div class="nav-marca"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="17" fill="#1A56DB"/><path d="M19 13h19l9 9v27a3 3 0 01-3 3H19a3 3 0 01-3-3V16a3 3 0 013-3z" fill="#fff"/><path d="M38 13v9h9z" fill="#BFD3FF"/><text x="30" y="37" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="11.5" fill="#1A56DB">606</text><circle cx="47.5" cy="48.5" r="8.5" fill="#15965A" stroke="#fff" stroke-width="2.6"/><path d="M43.6 48.7l2.7 2.7 4.7-5.4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Factura 606</span><small>Para contadores</small></div>
+  <div class="nav-marca"><span class="marca-606">606</span><span>Factura 606</span></div>
   <a href="#inicio" data-v="inicio" aria-label="Inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5V20H4z"/><path d="M10 20v-5h4v5"/></svg><span>Inicio</span></a>
   <a href="#clientes" data-v="clientes" aria-label="Clientes"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Clientes</span></a>
   <a href="#capturar" data-v="capturar" class="nav-scan" aria-label="Escanear"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg><span>Escanear</span></a>
@@ -47,21 +78,14 @@
 
   <!-- ================= INICIO ================= -->
   <section class="vista" id="v-inicio" hidden>
-    <div class="banner">
-      <svg class="logo logo-606" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="17" fill="#1A56DB"/><path d="M19 13h19l9 9v27a3 3 0 01-3 3H19a3 3 0 01-3-3V16a3 3 0 013-3z" fill="#fff"/><path d="M38 13v9h9z" fill="#BFD3FF"/><text x="30" y="37" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="11.5" fill="#1A56DB">606</text><circle cx="47.5" cy="48.5" r="8.5" fill="#15965A" stroke="#fff" stroke-width="2.6"/><path d="M43.6 48.7l2.7 2.7 4.7-5.4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <h1 id="saludo">606</h1>
-      <p>Gestiona tus clientes y prepara el 606 de forma rápida.</p>
-      <div class="pills" id="pills"></div>
-      <svg class="franja" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 62 C120 18 260 8 400 26 L400 52 C260 38 130 48 0 88Z"/><path d="M0 88 C130 48 260 38 400 52 L400 64 C260 52 140 62 0 96Z"/><path d="M0 96 C140 62 260 52 400 64 L400 100 L0 100Z"/></svg>
+    <div class="hero">
+      <p class="hero-sub">606 de</p>
+      <h1 class="hero-mes" id="heroMes"></h1>
     </div>
-    <div class="stats" id="cifras"></div>
-    <div class="tabla" id="tablaInicio">
-      <div class="card-cab">
-        <h2><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.3c2.3.1 4 1.6 4.5 4.2"/></svg>Mis clientes</h2>
-        <button class="btn chico" data-accion="nuevo-cliente"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo cliente</button>
-      </div>
-      <div id="pila"></div>
-    </div>
+    <div class="pills" id="pills"></div>
+    <div class="bloques" id="cifras"></div>
+    <div class="pila" id="pila"></div>
+    <a class="mas-carpetas" href="#clientes" id="masCarpetas" hidden></a>
   </section>
 
   <!-- ================= CLIENTES ================= -->
@@ -74,7 +98,7 @@
       </div>
       <button class="btn" id="btnNuevoCliente"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>
     </div>
-    <div class="tabla" id="listaClientes"></div>
+    <div id="listaClientes"></div>
   </section>
 
   <!-- ================= CAPTURAR ================= -->
@@ -404,28 +428,26 @@
 <!-- Bienvenida -->
 <dialog id="dlgBienvenida" class="pantalla bienvenida">
   <div class="bv-cuerpo">
-    <div class="bv-marca"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="17" fill="#1A56DB"/><path d="M19 13h19l9 9v27a3 3 0 01-3 3H19a3 3 0 01-3-3V16a3 3 0 013-3z" fill="#fff"/><path d="M38 13v9h9z" fill="#BFD3FF"/><text x="30" y="37" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="11.5" fill="#1A56DB">606</text><circle cx="47.5" cy="48.5" r="8.5" fill="#15965A" stroke="#fff" stroke-width="2.6"/><path d="M43.6 48.7l2.7 2.7 4.7-5.4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Factura 606</span></div>
-    <h1 class="bv-titulo"><span>Contador</span><b>606</b></h1>
-    <p class="bv-sub">Gestiona el 606 de todos tus clientes de iguala, en una sola app.</p>
-    <ul class="bv-lista">
-      <li><span><b>Varios clientes</b>, cada uno con su RNC y sus suplidores.</span></li>
-      <li><span><b>Escaneo en ráfaga</b> de los QR, o fotos en lote. Revisas solo lo marcado.</span></li>
-      <li><span><b>Excel listo</b> para pegar en la herramienta de la DGII.</span></li>
-    </ul>
+    <div class="bv-carpeta" aria-hidden="true"><i></i><i></i><i>606</i></div>
+    <h1>El 606 de todos tus clientes, en una sola app</h1>
+    <ol class="bv-pasos">
+      <li><span><b>Agrega tus clientes</b> de iguala con su RNC. Cada uno es una carpeta.</span></li>
+      <li><span><b>Escanea en ráfaga</b> los QR o sube las fotos en lote. Revisa solo lo que la app marque.</span></li>
+      <li><span><b>Descarga el Excel</b> y pégalo en la herramienta de la DGII.</span></li>
+    </ol>
   </div>
   <div class="bv-pie">
     <button class="btn grande" id="bvEmpezar">Agregar mi primer cliente</button>
     <button class="btn fantasma" id="bvEjemplo">Probar con datos de ejemplo</button>
   </div>
-  <svg class="franja" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 62 C120 18 260 8 400 26 L400 52 C260 38 130 48 0 88Z"/><path d="M0 88 C130 48 260 38 400 52 L400 64 C260 52 140 62 0 96Z"/><path d="M0 96 C140 62 260 52 400 64 L400 100 L0 100Z"/></svg>
 </dialog>
 
 <div class="cola" id="cola"></div>
 <div class="toast" id="toast" role="status"><span id="toastTxt"></span><button id="toastBtn" hidden></button></div>
 
-<script src="catalogos.js?v=2026.11.18-4"></script>
-<script src="lector.js?v=2026.11.18-4"></script>
-<script src="xlsx.js?v=2026.11.18-4"></script>
-<script src="app.js?v=2026.11.18-4"></script>
+<script src="catalogos.js?v=2026.11.18-5"></script>
+<script src="lector.js?v=2026.11.18-5"></script>
+<script src="xlsx.js?v=2026.11.18-5"></script>
+<script src="app.js?v=2026.11.18-5"></script>
 </body>
 </html>
