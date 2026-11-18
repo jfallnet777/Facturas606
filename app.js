@@ -4,7 +4,7 @@
 // =====================================================================
 //  Versión y protección contra archivos mezclados
 // =====================================================================
-const VERSION_APP = "2026.11.18-5";
+const VERSION_APP = "2026.11.18-6";
 
 async function limpiarYRecargar() {
   try {
