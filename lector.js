@@ -214,8 +214,8 @@ function buscarNCFs(texto) {
     let letra = m[1], tipo = corregirNCF(m[2]), sec = corregirNCF(m[3]);
     if (letra === "8") letra = "B";
     const ncf = letra + tipo + sec;
-    const ok = (letra === "B" && sec.length === 8 && /^(01|02|03|04|11|12|13|14|15|16|17)$/.test(tipo)) ||
-               (letra === "E" && sec.length === 10 && /^(31|32|33|34|41|43|44|45|46|47)$/.test(tipo));
+    const ok = (letra === "B" && sec.length === 8 && /^(01|02|03|04|11|12|13|14|15|17)$/.test(tipo)) ||
+               (letra === "E" && sec.length === 10 && /^(31|32|33|34|41|42|43|44|45|47)$/.test(tipo));
     if (ok) res.push({ ncf, pos: m.index });
   }
   return res;

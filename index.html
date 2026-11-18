@@ -4,147 +4,423 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Factura 606</title>
-<meta name="theme-color" content="#0f5132">
+<meta name="theme-color" content="#1A56DB">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
-  <h1>Factura 606</h1>
-  <div class="hdr-right">
-    <label class="periodo">Período
-      <input type="month" id="periodo">
-    </label>
-    <button id="btnAjustes" class="icon" title="Ajustes" aria-label="Ajustes">⚙</button>
+
+<!-- ================= Barra superior ================= -->
+<header class="top">
+  <button class="cliente-btn" id="clienteBtn" aria-label="Cambiar de cliente">
+    <span class="cl-av" id="clAv">?</span>
+    <span class="cl-txt"><b id="clNombre">Elige un cliente</b><small id="clRnc"></small></span>
+    <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+  </button>
+  <span class="top-titulo" id="topTitulo">Clientes</span>
+  <div class="periodo">
+    <button class="per-flecha" id="perPrev" aria-label="Mes anterior"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="per-label" id="perLabel" aria-label="Cambiar período"><b id="perMes">Nov</b> <span id="perAnio">2026</span></button>
+    <button class="per-flecha" id="perNext" aria-label="Mes siguiente"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <input type="month" id="perInput" class="oculto" tabindex="-1" aria-hidden="true">
   </div>
+  <a href="#ajustes" class="icono engrane" aria-label="Ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg></a>
 </header>
 
-<main>
-  <section class="scan">
-    <button class="btn-scan" id="btnQR">🔳 Escanear QR</button>
-    <label class="btn-scan alt" for="fileAny">📷 Foto / PDF</label>
-    <input type="file" id="fileAny" accept="image/*,application/pdf" multiple hidden>
-    <button class="btn-scan alt" id="btnManual">✍ Manual</button>
+<!-- ================= Navegación ================= -->
+<nav class="nav" aria-label="Módulos">
+  <div class="nav-marca"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="17" fill="#1A56DB"/><path d="M19 13h19l9 9v27a3 3 0 01-3 3H19a3 3 0 01-3-3V16a3 3 0 013-3z" fill="#fff"/><path d="M38 13v9h9z" fill="#BFD3FF"/><text x="30" y="37" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="11.5" fill="#1A56DB">606</text><circle cx="47.5" cy="48.5" r="8.5" fill="#15965A" stroke="#fff" stroke-width="2.6"/><path d="M43.6 48.7l2.7 2.7 4.7-5.4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Factura 606</span><small>Para contadores</small></div>
+  <a href="#inicio" data-v="inicio" aria-label="Inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5V20H4z"/><path d="M10 20v-5h4v5"/></svg><span>Inicio</span></a>
+  <a href="#clientes" data-v="clientes" aria-label="Clientes"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Clientes</span></a>
+  <a href="#capturar" data-v="capturar" class="nav-scan" aria-label="Escanear"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg><span>Escanear</span></a>
+  <a href="#facturas" data-v="facturas" aria-label="Facturas"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span>Facturas</span><i class="badge" id="navBadge" hidden></i></a>
+  <a href="#exportar" data-v="exportar" aria-label="Exportar"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg><span>Exportar</span></a>
+  <a href="#ajustes" data-v="ajustes" class="solo-escritorio" aria-label="Ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><span>Ajustes</span></a>
+</nav>
+
+<main id="app">
+
+  <!-- ================= INICIO ================= -->
+  <section class="vista" id="v-inicio" hidden>
+    <div class="banner">
+      <svg class="logo logo-606" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="17" fill="#1A56DB"/><path d="M19 13h19l9 9v27a3 3 0 01-3 3H19a3 3 0 01-3-3V16a3 3 0 013-3z" fill="#fff"/><path d="M38 13v9h9z" fill="#BFD3FF"/><text x="30" y="37" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="11.5" fill="#1A56DB">606</text><circle cx="47.5" cy="48.5" r="8.5" fill="#15965A" stroke="#fff" stroke-width="2.6"/><path d="M43.6 48.7l2.7 2.7 4.7-5.4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1 id="saludo">606</h1>
+      <p>Gestiona tus clientes y prepara el 606 de forma rápida.</p>
+      <div class="pills" id="pills"></div>
+      <svg class="franja" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 62 C120 18 260 8 400 26 L400 52 C260 38 130 48 0 88Z"/><path d="M0 88 C130 48 260 38 400 52 L400 64 C260 52 140 62 0 96Z"/><path d="M0 96 C140 62 260 52 400 64 L400 100 L0 100Z"/></svg>
+    </div>
+    <div class="stats" id="cifras"></div>
+    <div class="tabla" id="tablaInicio">
+      <div class="card-cab">
+        <h2><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.3c2.3.1 4 1.6 4.5 4.2"/></svg>Mis clientes</h2>
+        <button class="btn chico" data-accion="nuevo-cliente"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo cliente</button>
+      </div>
+      <div id="pila"></div>
+    </div>
   </section>
 
-  <div id="cola" class="cola"></div>
-
-  <section class="totales" id="totales"></section>
-
-  <section id="lista" class="lista"></section>
-
-  <section class="export">
-    <button id="btnTxt">⬇ TXT DGII</button>
-    <button id="btnCsv">⬇ Excel (CSV)</button>
-    <button id="btnBackup">💾 Respaldo</button>
-    <label class="btnlike" for="fileImport">📂 Restaurar</label>
-    <input type="file" id="fileImport" accept="application/json" hidden>
+  <!-- ================= CLIENTES ================= -->
+  <section class="vista" id="v-clientes" hidden>
+    <div class="progreso" id="progreso"></div>
+    <div class="barra-herr">
+      <div class="buscador">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input type="search" id="buscarCliente" placeholder="Buscar cliente o RNC">
+      </div>
+      <button class="btn" id="btnNuevoCliente"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>
+    </div>
+    <div class="tabla" id="listaClientes"></div>
   </section>
-  <p class="aviso">Orden de lectura: código QR → texto de la factura (OCR) → manual. Revisa cada factura antes de exportar; la lectura automática puede equivocarse, y la clasificación fiscal es responsabilidad tuya o de tu contador.</p>
+
+  <!-- ================= CAPTURAR ================= -->
+  <section class="vista" id="v-capturar" hidden>
+    <div class="det-cli" id="capCab"></div>
+    <div class="cifras-det" id="capCifras"></div>
+    <div id="bandeja"></div>
+    <div class="modos">
+      <button class="modo principal" id="mRafaga">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></svg>
+        <span><b>Escanear QR en ráfaga</b><small>Una factura tras otra sin salir de la cámara</small></span>
+      </button>
+      <div class="modos-sec">
+      <label class="modo" for="fileLote">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <span><b>Fotos o PDF</b><small>Varias a la vez, se leen solas</small></span>
+      </label>
+      <input type="file" id="fileLote" accept="image/*,application/pdf" multiple hidden>
+      <button class="modo" id="mManual">
+        <svg viewBox="0 0 24 24"><path d="M5 19l1-4L16 5l3 3L9 18z"/><path d="M14 7l3 3"/></svg>
+        <span><b>Escribir a mano</b><small>Con “Guardar y otra”</small></span>
+      </button>
+      </div>
+    </div>
+
+
+    <div id="ultimas"></div>
+  </section>
+
+  <!-- ================= FACTURAS ================= -->
+  <section class="vista" id="v-facturas" hidden>
+    <div class="barra-herr">
+      <div class="buscador">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input type="search" id="buscar" placeholder="Suplidor, RNC o NCF">
+      </div>
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip" data-f="todas">Todas</button>
+      <button class="chip" data-f="avisos">Por revisar</button>
+      <button class="chip" data-f="QR">QR</button>
+      <button class="chip" data-f="OCR">OCR</button>
+      <button class="chip" data-f="Manual">Manual</button>
+    </div>
+    <div class="resumen-lista" id="pieLista"></div>
+    <div class="tabla-cab" aria-hidden="true"><span></span><span>Suplidor y NCF</span><span>Fecha</span><span>Tipo</span><span class="der">ITBIS</span><span class="der">Total</span></div>
+    <div id="listaFacturas"></div>
+  </section>
+
+  <!-- ================= EXPORTAR ================= -->
+  <section class="vista" id="v-exportar" hidden>
+    <h1 class="titulo-vista" id="expTitulo"></h1>
+    <div class="card rango">
+      <div class="rango-cab"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><b>Período a exportar</b></div>
+      <div class="par">
+        <label class="campo"><span>Desde</span><select id="expDesde"></select></label>
+        <label class="campo"><span>Hasta</span><select id="expHasta"></select></label>
+      </div>
+      <div class="chips rango-rapido" id="rangoRapido">
+        <button class="chip" data-r="actual">Mes del panel</button>
+        <button class="chip" data-r="anterior">Mes anterior</button>
+        <button class="chip" data-r="tres">Últimos 3 meses</button>
+        <button class="chip" data-r="anio">Este año</button>
+        <button class="chip" data-r="pasado">Año pasado</button>
+      </div>
+    </div>
+    <div class="bloque excel-todos">
+      <h2 class="seccion-tit"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen general</h2>
+      <p class="nota-izq" id="expTodosTxt" hidden></p>
+      <div class="tabla" id="listaExcel"></div>
+      <button class="btn ancho" id="btnXlsxTodos">Descargar el Excel de todos</button>
+    </div>
+
+    <div id="expCliente">
+    <h2 class="sub-vista" id="expClienteNombre"></h2>
+    <ul class="checklist" id="checklist"></ul>
+
+    <div class="export-principal">
+      <div>
+        <h3><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>Pasar a la herramienta 606 de la DGII</h3>
+        <p>El Excel tiene la misma distribución de la herramienta: el encabezado en C4 y C5, y las facturas desde la fila 12 en las columnas B a Z.</p>
+        <p class="nota-rango" id="notaRango" hidden></p>
+      </div>
+      <ol class="pasos-dgii">
+        <li><span><b>Encabezado.</b> Copia el encabezado y pégalo en la celda <b>C4</b> de la herramienta. Se llenan el RNC (C4) y el período (C5).</span>
+          <button class="btn sec chico" id="btnCopiarCab">Copiar encabezado</button></li>
+        <li><span><b>Cantidad de registros.</b> Escribe en <b>C6</b> la cantidad (este período tiene <b id="expCuenta"></b>) y pulsa <b>Inicio</b>.</span></li>
+        <li><span><b>Facturas.</b> Haz clic en <b>B12</b> y pega las filas con <b>Pegado especial → Valores</b> (Ctrl+Alt+V y luego V), para no borrar las listas de la herramienta.</span>
+          <button class="btn sec chico" id="btnCopiar">Copiar filas</button></li>
+        <li><span><b>Completa y valida.</b> Llena las casillas que faltan, pulsa <b>Validar</b> y luego <b>Generar archivo</b>.</span></li>
+      </ol>
+      <div class="fila-btn"><button class="btn excel" id="btnXlsx"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg>Descargar Excel</button></div>
+      <details class="formato">
+        <summary>Casillas que se llenan solas</summary>
+        <div class="casillas" id="casillas"></div>
+        <button type="button" class="btn fantasma chico" id="btnCasillasDef">Restablecer (1-4, 6, 8, 9, 11, 13 y 23)</button>
+      </details>
+    </div>
+
+    <h2 class="sub-vista">Otros formatos</h2>
+    <div class="grupo lista-ajustes">
+      <button class="fila-accion" id="btnTxt"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg></span><span>Archivo TXT<small>El que se sube en la Oficina Virtual</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="fila-accion" id="btnCsv"><span class="ic-tile"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg></span><span>CSV con detalle<small>Incluye el nombre del suplidor</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="fila-accion" id="btnEnviado"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span><span id="btnEnviadoTxt">Marcar como enviado</span><small id="estadoTxt"></small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    </div>
+
+
+  </section>
+
+  <!-- ================= AJUSTES ================= -->
+  <section class="vista" id="v-ajustes" hidden>
+    <h2 class="seccion-tit">Apariencia</h2>
+    <div class="grupo">
+      <div class="segmento" id="segTema">
+        <button type="button" data-t="auto">Automática</button>
+        <button type="button" data-t="claro">Clara</button>
+        <button type="button" data-t="oscuro">Oscura</button>
+      </div>
+    </div>
+    <h2 class="seccion-tit">Clientes y suplidores</h2>
+    <div class="grupo lista-ajustes">
+      <button class="fila-accion" id="btnEditarCliente"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></span><span>Editar el cliente actual<small id="ajCliente"></small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      <div class="fila-accion estatica"><span class="ic-tile"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><path d="M16 11l2 2 4-4"/></svg></span><span>Suplidores recordados<small id="ajSuplidores"></small></span></div>
+      <button class="fila-accion" id="btnOlvidarSup"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg></span><span>Olvidar suplidores<small>Deja de autocompletar nombres y tipos de gasto</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <h2 class="seccion-tit">Respaldo</h2>
+    <div class="grupo lista-ajustes">
+      <button class="fila-accion" id="btnBackup"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg></span><span>Guardar un respaldo<small>Todos los clientes y facturas en un archivo</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      <label class="fila-accion" for="fileImport"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 19h14"/></svg></span><span>Restaurar un respaldo<small>Agrega lo que tenga el archivo</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></label>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+      <button class="fila-accion" id="btnEjemplo"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><span>Cargar datos de ejemplo<small>Cuatro clientes con facturas para probar</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <p class="nota">Todo se guarda solo en este dispositivo. Haz respaldos a menudo.</p>
+  </section>
 </main>
 
-<!-- Ajustes -->
-<dialog id="dlgAjustes">
-  <form method="dialog" class="form">
-    <h2>Ajustes</h2>
-    <label>Tu RNC / Cédula (informante)
-      <input type="text" id="cfgRnc" inputmode="numeric" maxlength="11">
-      <small>También sirve para que el lector no confunda tu RNC con el del suplidor.</small>
-    </label>
-    <label>Los montos leídos van por defecto a
-      <select id="cfgDestino">
-        <option value="bienes">Monto en bienes</option>
-        <option value="servicios">Monto en servicios</option>
-      </select>
-    </label>
-    <label>Tipo de gasto por defecto
-      <select id="cfgTipo"></select>
-    </label>
-    <label>Forma de pago por defecto
-      <select id="cfgPago"></select>
-    </label>
-    <div class="acciones">
-      <button value="cancel" class="sec">Cerrar</button>
-      <button value="ok" id="btnGuardarCfg">Guardar</button>
+<!-- ================= Diálogos ================= -->
+
+<!-- Cambiar de cliente -->
+<dialog id="dlgClientes" class="hoja">
+  <div class="hoja-asa"></div>
+  <h2>Cambiar de cliente</h2>
+  <div class="buscador plano"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" id="buscarSel" placeholder="Buscar"></div>
+  <div id="selClientes" class="sel-clientes"></div>
+  <a href="#clientes" class="btn sec ancho" id="verTodos">Ver el panel de clientes</a>
+</dialog>
+
+<!-- Cliente: crear / editar -->
+<dialog id="dlgCliente" class="alerta ancha">
+  <form id="frmCliente">
+    <h2 id="tituloCliente">Nuevo cliente</h2>
+    <label class="campo"><span>Nombre</span><input name="nombre" required placeholder="Ej. Colmado Don Pedro SRL"></label>
+    <label class="campo"><span>RNC o cédula</span><input name="rnc" inputmode="numeric" maxlength="11" required><small class="err" data-ce="rnc"></small></label>
+    <div class="par">
+      <label class="campo"><span>Gasto más común</span><select name="tipo"></select></label>
+      <label class="campo"><span>Pago más común</span><select name="pago"></select></label>
+    </div>
+    <label class="campo"><span>Los montos leídos van a</span>
+      <select name="destino"><option value="bienes">Bienes</option><option value="servicios">Servicios</option></select></label>
+    <fieldset class="colores"><legend>Color del cliente</legend><div class="swatches" id="swatches"></div></fieldset>
+    <div class="fila-btn">
+      <button type="button" class="btn fantasma peligro-txt" id="btnBorrarCliente">Borrar</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn sec" id="btnCancelarCliente">Cancelar</button>
+      <button type="submit" class="btn">Guardar</button>
     </div>
   </form>
 </dialog>
 
-<!-- Editar factura -->
-<dialog id="dlgFactura">
-  <form method="dialog" class="form" id="frmFactura">
-    <h2 id="tituloFactura">Factura</h2>
-    <div id="alertas" class="alertas"></div>
-    <label>Suplidor (referencia, no se exporta)<input name="suplidor"></label>
-    <div class="grid2">
-      <label>RNC / Cédula<input name="rnc" inputmode="numeric" maxlength="11" required></label>
-      <label>Tipo ID<select name="tipoId"><option value="1">1 - RNC</option><option value="2">2 - Cédula</option></select></label>
-      <label>NCF / e-NCF<input name="ncf" maxlength="13" required style="text-transform:uppercase"></label>
-      <label>NCF modificado<input name="ncfMod" maxlength="13" style="text-transform:uppercase"></label>
-      <label>Fecha comprobante<input name="fecha" type="date" required></label>
-      <label>Fecha de pago<input name="fechaPago" type="date"></label>
+<!-- Ráfaga QR -->
+<dialog id="dlgQR" class="pantalla oscura">
+  <div class="qr-cab">
+    <button class="btn fantasma blanco" id="btnTerminar">Terminar</button>
+    <span id="rfContador">0 guardadas</span>
+    <label class="btn fantasma blanco" for="fileFoto">Sin QR</label>
+    <input type="file" id="fileFoto" accept="image/*" capture="environment" hidden>
+  </div>
+  <div class="visor">
+    <video id="video" playsinline muted></video>
+    <div class="mira"><i></i><i></i><i></i><i></i></div>
+    <p class="visor-txt" id="estadoQR">Abriendo la cámara…</p>
+  </div>
+
+  <!-- Panel rápido tras leer un QR -->
+  <form class="rapido" id="rapido" hidden>
+    <div class="rp-alerta" id="rpAlerta" hidden></div>
+    <div class="rp-cab">
+      <input name="suplidor" class="rp-sup" placeholder="Nombre del suplidor" autocomplete="off">
+      <span class="rp-meta mono" id="rpMeta"></span>
     </div>
-    <label>Tipo de bienes y servicios<select name="tipoBS"></select></label>
-    <div class="desglose">
-      <label>Total en la factura<input name="total" type="number" step="0.01" min="0"></label>
-      <label class="chk"><input type="checkbox" id="chkPropina"> Incluye 10% de ley</label>
-      <button type="button" id="btnDesglosar" class="sec">Desglosar ITBIS 18%</button>
+    <div class="rp-montos">
+      <div><small>Total</small><b class="mono" id="rpTotal"></b></div>
+      <div><small>ITBIS</small><b class="mono" id="rpItbis"></b></div>
+      <div><small id="rpBaseLbl">Bienes</small><b class="mono" id="rpBase"></b></div>
     </div>
-    <div class="grid2">
-      <label>Monto servicios<input name="servicios" type="number" step="0.01" min="0"></label>
-      <label>Monto bienes<input name="bienes" type="number" step="0.01" min="0"></label>
-      <label>ITBIS facturado<input name="itbis" type="number" step="0.01" min="0"></label>
-      <label>Propina legal<input name="propina" type="number" step="0.01" min="0"></label>
+    <div class="segmento" id="rpCalculo">
+      <button type="button" data-c="18">ITBIS 18%</button>
+      <button type="button" data-c="18p">18% + 10% ley</button>
+      <button type="button" data-c="ex">Exento</button>
     </div>
-    <details>
-      <summary>Retenciones, ITBIS especial y otros impuestos</summary>
-      <div class="grid2">
-        <label>ITBIS retenido<input name="itbisRet" type="number" step="0.01" min="0"></label>
-        <label>ITBIS proporcionalidad (Art. 349)<input name="itbisProp" type="number" step="0.01" min="0"></label>
-        <label>ITBIS llevado al costo<input name="itbisCosto" type="number" step="0.01" min="0"></label>
-        <label>ITBIS percibido<input name="itbisPerc" type="number" step="0.01" min="0"></label>
-        <label>Tipo retención ISR<select name="tipoRetIsr"></select></label>
-        <label>Monto retención renta<input name="retIsr" type="number" step="0.01" min="0"></label>
-        <label>ISR percibido<input name="isrPerc" type="number" step="0.01" min="0"></label>
-        <label>Selectivo (ISC)<input name="isc" type="number" step="0.01" min="0"></label>
-        <label>Otros impuestos/tasas<input name="otros" type="number" step="0.01" min="0"></label>
+    <div class="par">
+      <label class="campo"><span>Tipo de gasto</span><select name="tipoBS"></select></label>
+      <label class="campo"><span>Pago</span><select name="formaPago"></select></label>
+    </div>
+    <div class="fila-btn">
+      <button type="button" class="btn sec" id="rpSaltar">Descartar</button>
+      <button type="button" class="btn sec" id="rpCompleta">Ver completa</button>
+      <button type="submit" class="btn" id="rpGuardar">Guardar y seguir</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Formulario completo -->
+<dialog id="dlgFactura" class="pantalla">
+  <form id="frmFactura" novalidate>
+    <div class="form-cab">
+      <button type="button" class="icono redondo" id="btnCerrarForm" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="cola-rev" id="colaRev"></div>
+      <button type="button" class="icono redondo" id="btnBorrar" aria-label="Borrar factura"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg></button>
+    </div>
+    <div class="carpeta-tab" id="formTab"></div>
+    <div class="form-carpeta">
+    <div class="form-cuerpo">
+      <div class="hoja-cab">
+        <span class="origen" id="origenFactura"></span>
+        <h2 id="tituloFactura">Factura</h2>
+        <span class="hoja-meta mono" id="metaFactura"></span>
       </div>
-    </details>
-    <label>Forma de pago<select name="formaPago"></select></label>
-    <label>Notas<textarea name="notas" rows="2"></textarea></label>
-    <a id="lnkDGII" href="#" target="_blank" rel="noopener" class="lnk" hidden>🔎 Verificar este e-CF en la DGII</a>
-    <details id="detTexto" hidden>
-      <summary>Texto leído de la factura</summary>
-      <pre id="txtLeido"></pre>
-    </details>
-    <p class="calc" id="calcFactura"></p>
-    <div class="acciones">
-      <button value="del" class="peligro" id="btnBorrar">Borrar</button>
-      <button value="cancel" class="sec" formnovalidate>Cancelar</button>
-      <button value="ok">Guardar</button>
+      <div class="cuadre" id="cuadre"></div>
+      <div class="avisos-gen" id="avisosGen"></div>
+
+      <fieldset>
+        <legend>Comprobante</legend>
+        <div class="par par-id">
+          <label class="campo"><span>RNC o cédula</span><input name="rnc" inputmode="numeric" maxlength="11" class="mono"><small class="err" data-e="rnc"></small></label>
+          <label class="campo"><span>Tipo ID</span><select name="tipoId"><option value="1">RNC</option><option value="2">Cédula</option></select></label>
+        </div>
+        <label class="campo"><span>NCF o e-NCF</span><input name="ncf" maxlength="13" class="mono mayus"><small class="err" data-e="ncf"></small><span class="sugerencia" id="sugNcf" hidden></span></label>
+        <label class="campo"><span>Suplidor</span><input name="suplidor" list="dlSuplidores" placeholder="Se completa solo si ya lo conoces"></label>
+        <datalist id="dlSuplidores"></datalist>
+        <label class="campo" id="campoNcfMod"><span>NCF que modifica</span><input name="ncfMod" maxlength="13" class="mono mayus"><small class="err" data-e="ncfMod"></small></label>
+        <div class="par">
+          <label class="campo"><span>Fecha</span><input name="fecha" type="date"><small class="err" data-e="fecha"></small></label>
+          <label class="campo"><span>Fecha de pago</span><input name="fechaPago" type="date"><small class="err" data-e="fechaPago"></small></label>
+        </div>
+        <label class="campo"><span>Tipo de gasto</span><select name="tipoBS"></select></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Montos</legend>
+        <div class="desglose">
+          <label class="campo"><span>Total de la factura</span><input name="total" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <div class="segmento" id="segCalc">
+            <button type="button" data-c="18">ITBIS 18%</button>
+            <button type="button" data-c="18p">18% + 10% ley</button>
+            <button type="button" data-c="ex">Exento</button>
+          </div>
+        </div>
+        <div class="par">
+          <label class="campo"><span>Bienes</span><input name="bienes" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>Servicios</span><input name="servicios" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+        </div>
+        <small class="err" data-e="montos"></small>
+        <div class="par">
+          <label class="campo"><span>ITBIS facturado</span><input name="itbis" type="number" step="0.01" min="0" inputmode="decimal" class="mono"><small class="err" data-e="itbis"></small></label>
+          <label class="campo"><span>Propina legal</span><input name="propina" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+        </div>
+      </fieldset>
+
+      <details class="avanzado" id="detAvanzado">
+        <summary>Retenciones y otros impuestos</summary>
+        <div class="par">
+          <label class="campo"><span>ITBIS retenido</span><input name="itbisRet" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>ITBIS al costo</span><input name="itbisCosto" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>ITBIS proporcionalidad</span><input name="itbisProp" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>ITBIS percibido</span><input name="itbisPerc" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+        </div>
+        <label class="campo"><span>Tipo de retención ISR</span><select name="tipoRetIsr"></select><small class="err" data-e="tipoRetIsr"></small></label>
+        <div class="par">
+          <label class="campo"><span>Retención renta</span><input name="retIsr" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>ISR percibido</span><input name="isrPerc" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>Selectivo (ISC)</span><input name="isc" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+          <label class="campo"><span>Otros impuestos</span><input name="otros" type="number" step="0.01" min="0" inputmode="decimal" class="mono"></label>
+        </div>
+      </details>
+
+      <fieldset>
+        <legend>Pago</legend>
+        <div class="pagos" id="pagos"></div>
+        <input type="hidden" name="formaPago">
+      </fieldset>
+
+      <label class="campo"><span>Notas</span><textarea name="notas" rows="2"></textarea></label>
+      <a id="lnkDGII" href="#" target="_blank" rel="noopener" class="mini-link" hidden>Verificar este e-CF en la DGII</a>
+      <details id="detTexto" class="avanzado" hidden>
+        <summary>Texto que se leyó de la factura</summary>
+        <pre id="txtLeido"></pre>
+      </details>
+    </div>
+
+    <div class="form-pie">
+      <div class="pie-resumen"><small>ITBIS por adelantar</small><b id="pieAdelantar">0.00</b></div>
+      <div class="fila-btn">
+        <button type="button" class="btn sec" id="btnGuardarOtra">Guardar y otra</button>
+        <button type="submit" class="btn" id="btnGuardar">Guardar</button>
+      </div>
+    </div>
     </div>
   </form>
 </dialog>
 
-<!-- Escáner QR -->
-<dialog id="dlgQR">
-  <div class="form">
-    <h2>Apunta al código QR de la factura</h2>
-    <div class="visor"><video id="video" playsinline muted></video><div class="marco"></div></div>
-    <p class="calc" id="estadoQR">Abriendo cámara…</p>
-    <div class="acciones">
-      <button type="button" class="sec" id="btnCerrarQR">Cancelar</button>
-      <label class="btnlike" for="fileFoto">No tiene QR → leer texto</label>
-      <input type="file" id="fileFoto" accept="image/*" capture="environment" hidden>
-    </div>
+<!-- Confirmación -->
+<dialog id="dlgConfirmar" class="alerta">
+  <p id="confTexto"></p>
+  <div class="fila-btn">
+    <button class="btn sec" id="confNo">Cancelar</button>
+    <button class="btn" id="confSi">Aceptar</button>
   </div>
 </dialog>
 
-<div id="toast" class="toast"></div>
+<!-- Bienvenida -->
+<dialog id="dlgBienvenida" class="pantalla bienvenida">
+  <div class="bv-cuerpo">
+    <div class="bv-marca"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="17" fill="#1A56DB"/><path d="M19 13h19l9 9v27a3 3 0 01-3 3H19a3 3 0 01-3-3V16a3 3 0 013-3z" fill="#fff"/><path d="M38 13v9h9z" fill="#BFD3FF"/><text x="30" y="37" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="800" font-size="11.5" fill="#1A56DB">606</text><circle cx="47.5" cy="48.5" r="8.5" fill="#15965A" stroke="#fff" stroke-width="2.6"/><path d="M43.6 48.7l2.7 2.7 4.7-5.4" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Factura 606</span></div>
+    <h1 class="bv-titulo"><span>Contador</span><b>606</b></h1>
+    <p class="bv-sub">Gestiona el 606 de todos tus clientes de iguala, en una sola app.</p>
+    <ul class="bv-lista">
+      <li><span><b>Varios clientes</b>, cada uno con su RNC y sus suplidores.</span></li>
+      <li><span><b>Escaneo en ráfaga</b> de los QR, o fotos en lote. Revisas solo lo marcado.</span></li>
+      <li><span><b>Excel listo</b> para pegar en la herramienta de la DGII.</span></li>
+    </ul>
+  </div>
+  <div class="bv-pie">
+    <button class="btn grande" id="bvEmpezar">Agregar mi primer cliente</button>
+    <button class="btn fantasma" id="bvEjemplo">Probar con datos de ejemplo</button>
+  </div>
+  <svg class="franja" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 62 C120 18 260 8 400 26 L400 52 C260 38 130 48 0 88Z"/><path d="M0 88 C130 48 260 38 400 52 L400 64 C260 52 140 62 0 96Z"/><path d="M0 96 C140 62 260 52 400 64 L400 100 L0 100Z"/></svg>
+</dialog>
+
+<div class="cola" id="cola"></div>
+<div class="toast" id="toast" role="status"><span id="toastTxt"></span><button id="toastBtn" hidden></button></div>
+
 <script src="catalogos.js"></script>
 <script src="lector.js"></script>
+<script src="xlsx.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

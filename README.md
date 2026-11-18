@@ -1,5 +1,7 @@
 # Factura 606
 
+Para contadores: varios clientes de iguala, escaneo en ráfaga, revisión en cola y Excel en el orden de la herramienta 606 de la DGII.
+
 PWA para leer facturas dominicanas **sin IA** y preparar el **Formato 606** de la DGII. Es gratis y no necesita claves API.
 
 ## Cómo lee las facturas (en este orden)

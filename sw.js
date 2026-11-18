@@ -1,5 +1,5 @@
-const CACHE = "f606-v3";
-const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "catalogos.js", "lector.js", "manifest.webmanifest",
+const CACHE = "f606-v12";
+const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "catalogos.js", "lector.js", "xlsx.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
