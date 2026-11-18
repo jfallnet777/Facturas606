@@ -2,6 +2,58 @@
 // Factura 606 — versión para contadores con varios clientes.
 
 // =====================================================================
+//  Versión y protección contra archivos mezclados
+// =====================================================================
+const VERSION_APP = "2026.11.18-4";
+
+async function limpiarYRecargar() {
+  try {
+    if ("serviceWorker" in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    if ("caches" in window) for (const k of await caches.keys()) await caches.delete(k);
+  } catch {}
+  location.replace(location.pathname + "?act=" + Date.now() + location.hash);
+}
+
+// Si algo falla al iniciar, mostrar qué pasó en vez de dejar la pantalla vacía
+let _errorMostrado = false;
+function pantallaError(detalle) {
+  if (_errorMostrado || String(detalle).includes("__recargando__")) return;
+  _errorMostrado = true;
+  const d = document.createElement("div");
+  d.setAttribute("role", "alert");
+  d.style.cssText = "position:fixed;inset:0;z-index:9999;background:#EEF3FB;color:#0F1B3D;font:16px/1.45 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px";
+  d.innerHTML = `<div style="max-width:420px;background:#fff;border-radius:20px;padding:24px;box-shadow:0 8px 30px rgba(15,27,61,.15)">
+    <h2 style="margin:0 0 8px;font-size:1.25rem">La app no terminó de cargar</h2>
+    <p style="margin:0 0 14px;color:#46536E">Casi siempre es porque el celular mezcló archivos viejos con nuevos después de una actualización. Toca <b>Actualizar ahora</b>. Tus clientes y facturas no se borran.</p>
+    <button id="errAct" style="width:100%;padding:14px;border:0;border-radius:12px;background:#1A56DB;color:#fff;font-weight:700;font-size:1rem;margin-bottom:8px">Actualizar ahora</button>
+    <button id="errResp" style="width:100%;padding:12px;border:1.5px solid #1A56DB;border-radius:12px;background:#fff;color:#1A56DB;font-weight:700">Guardar un respaldo de mis datos</button>
+    <p style="margin:14px 0 0;font-size:.8rem;color:#66728C">Detalle: <span id="errDet"></span><br>Versión del código: ${VERSION_APP}, de la página: ${document.documentElement.dataset.version || "anterior"}</p>
+  </div>`;
+  document.body.appendChild(d);
+  d.querySelector("#errDet").textContent = String(detalle).slice(0, 200);
+  d.querySelector("#errAct").onclick = limpiarYRecargar;
+  d.querySelector("#errResp").onclick = () => {
+    const datos = {};
+    try { for (const k of Object.keys(localStorage)) if (k.startsWith("f606_")) datos[k] = localStorage.getItem(k); } catch {}
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: "factura606-crudo", datos }, null, 1)], { type: "application/json" }));
+    a.download = "respaldo_factura606_emergencia.json"; document.body.appendChild(a); a.click(); a.remove();
+  };
+}
+window.addEventListener("error", (e) => pantallaError(e.message || e.error || "error desconocido"));
+
+// La página (index.html) y el código deben ser de la misma versión
+(() => {
+  const vPagina = document.documentElement.dataset.version;
+  if (vPagina === VERSION_APP) { try { sessionStorage.removeItem("f606_rep"); } catch {} return; }
+  let yaIntento = false;
+  try { yaIntento = !!sessionStorage.getItem("f606_rep"); sessionStorage.setItem("f606_rep", "1"); } catch {}
+  if (!yaIntento) { limpiarYRecargar(); throw new Error("__recargando__"); }
+  pantallaError(`El index.html que entrega GitHub es de otra versión (${vPagina || "anterior"}). Sube de nuevo todos los archivos, incluido index.html.`);
+  throw new Error("__recargando__");
+})();
+
+// =====================================================================
 //  Estado y almacenamiento
 // =====================================================================
 const $ = (s, r = document) => r.querySelector(s);
@@ -1147,6 +1199,10 @@ $("#fileImport").onchange = async (e) => {
       const nuevas = d.filter((f) => f?.id && !ids.has(f.id)).map((f) => ({ origen: "Manual", ...f, clienteId }));
       facturas.push(...nuevas); guardarTodo(); render(); return toast(`${nuevas.length} facturas restauradas en ${cliente().nombre}`);
     }
+    if (d.app === "factura606-crudo" && d.datos) { // respaldo de emergencia de la pantalla de error
+      const leer = (k, def) => { try { return JSON.parse(d.datos[k]) ?? def; } catch { return def; } };
+      d.app = "factura606"; d.clientes = leer("f606_clientes", []); d.facturas = leer("f606_facturas", []); d.sup = leer("f606_suplidores", {});
+    }
     if (d.app !== "factura606") throw 0;
     const idsC = new Set(clientes.map((c) => c.id)), idsF = new Set(facturas.map((f) => f.id));
     const nc = d.clientes.filter((c) => !idsC.has(c.id)), nf = d.facturas.filter((f) => !idsF.has(f.id));
@@ -1190,7 +1246,6 @@ $("#dlgBienvenida").addEventListener("cancel", (e) => e.preventDefault());
 
 // Inicio
 // ---------- Actualizaciones ----------
-const VERSION_APP = "2026.11.18-3";
 try {
   if ("serviceWorker" in navigator) {
     const habiaSW = !!navigator.serviceWorker.controller;
@@ -1206,14 +1261,7 @@ try {
   }
 } catch {}
 $("#ajVersion").textContent = VERSION_APP;
-$("#btnActualizar").onclick = async () => {
-  toast("Buscando la última versión…");
-  try {
-    if ("serviceWorker" in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
-    if ("caches" in window) for (const k of await caches.keys()) await caches.delete(k);
-  } catch {}
-  location.replace(location.pathname + "?act=" + Date.now() + location.hash);
-};
+$("#btnActualizar").onclick = () => { toast("Buscando la última versión…"); limpiarYRecargar(); };
 guardarTodo();
 aplicarTema();
 pintarPeriodo();
