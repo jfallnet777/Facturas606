@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2026.11.18-3">
 </head>
 <body>
 
@@ -207,6 +207,11 @@
       <label class="fila-accion" for="fileImport"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 19h14"/></svg></span><span>Restaurar un respaldo<small>Agrega lo que tenga el archivo</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></label>
       <input type="file" id="fileImport" accept="application/json,.json" hidden>
       <button class="fila-accion" id="btnEjemplo"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><span>Cargar datos de ejemplo<small>Cuatro clientes con facturas para probar</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <h2 class="seccion-tit">Aplicación</h2>
+    <div class="grupo lista-ajustes">
+      <div class="fila-accion estatica"><span class="ic-tile"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 12l2 2 4-4"/></svg></span><span>Versión instalada<small id="ajVersion"></small></span></div>
+      <button class="fila-accion" id="btnActualizar"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></svg></span><span>Forzar actualización<small>Borra la copia guardada y descarga la última versión. Tus datos no se borran.</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
     <p class="nota">Todo se guarda solo en este dispositivo. Haz respaldos a menudo.</p>
   </section>
@@ -418,9 +423,9 @@
 <div class="cola" id="cola"></div>
 <div class="toast" id="toast" role="status"><span id="toastTxt"></span><button id="toastBtn" hidden></button></div>
 
-<script src="catalogos.js"></script>
-<script src="lector.js"></script>
-<script src="xlsx.js"></script>
-<script src="app.js"></script>
+<script src="catalogos.js?v=2026.11.18-3"></script>
+<script src="lector.js?v=2026.11.18-3"></script>
+<script src="xlsx.js?v=2026.11.18-3"></script>
+<script src="app.js?v=2026.11.18-3"></script>
 </body>
 </html>

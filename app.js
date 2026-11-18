@@ -1189,7 +1189,31 @@ $("#bvEjemplo").onclick = () => { cfg.bienvenida = true; guardarTodo(); $("#dlgB
 $("#dlgBienvenida").addEventListener("cancel", (e) => e.preventDefault());
 
 // Inicio
-try { if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch {}
+// ---------- Actualizaciones ----------
+const VERSION_APP = "2026.11.18-3";
+try {
+  if ("serviceWorker" in navigator) {
+    const habiaSW = !!navigator.serviceWorker.controller;
+    let recargando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!habiaSW || recargando) return;
+      recargando = true; location.reload();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      reg.update();
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update(); });
+    }).catch(() => {});
+  }
+} catch {}
+$("#ajVersion").textContent = VERSION_APP;
+$("#btnActualizar").onclick = async () => {
+  toast("Buscando la última versión…");
+  try {
+    if ("serviceWorker" in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    if ("caches" in window) for (const k of await caches.keys()) await caches.delete(k);
+  } catch {}
+  location.replace(location.pathname + "?act=" + Date.now() + location.hash);
+};
 guardarTodo();
 aplicarTema();
 pintarPeriodo();
