@@ -10,12 +10,12 @@ const XLSX_MIN = (() => {
 
   function hojaXML(h) {
     const negritas = new Set(h.negritas || [0]);
-    const congelar = h.congelar == null ? 1 : h.congelar;
+    const congelar = h.congelar ?? 1;
     const filas = h.filas.map((fila, r) => {
       const celdas = fila.map((v, c) => {
         if (v === "" || v === null || v === undefined) return "";
         const ref = col(c) + (r + 1);
-        if (typeof v === "number") return `<c r="${ref}" s="${negritas.has(r) ? 1 : (h.tipos && h.tipos[c]) === "n" ? 2 : 0}"><v>${v}</v></c>`;
+        if (typeof v === "number") return `<c r="${ref}" s="${negritas.has(r) ? 1 : h.tipos?.[c] === "n" ? 2 : 0}"><v>${v}</v></c>`;
         return `<c r="${ref}" t="inlineStr"${negritas.has(r) ? ' s="1"' : ""}><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
       }).join("");
       return `<row r="${r + 1}">${celdas}</row>`;

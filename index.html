@@ -1,48 +1,17 @@
 <!DOCTYPE html>
-<html lang="es" data-version="2026.11.18-5">
+<html lang="es">
 <head>
 <meta charset="utf-8">
-<script>
-/* Vigilante de arranque (ES5, funciona en cualquier navegador): si la app no termina de cargar, muestra un aviso con una salida. */
-(function () {
-  var ultimoError = "";
-  window.addEventListener("error", function (e) { ultimoError = (e && e.message) || (e && e.target && (e.target.src || e.target.href)) || "error"; }, true);
-  function aviso() {
-    if (window.__f606listo || document.getElementById("avisoArranque") || document.querySelector("[role=alert]")) return;
-    var d = document.createElement("div");
-    d.id = "avisoArranque";
-    d.setAttribute("role", "alert");
-    d.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#E4E9EE;color:#1B1D22;font:16px/1.45 system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px";
-    d.innerHTML = '<div style="max-width:420px;background:#fff;border-radius:20px;padding:24px">' +
-      '<h2 style="margin:0 0 8px;font-size:1.25rem">La app no terminó de cargar</h2>' +
-      '<p style="margin:0 0 14px;color:#444C59">Toca <b>Actualizar ahora</b> para descargar todo de nuevo. Tus clientes y facturas no se borran.</p>' +
-      '<button id="avAct" style="width:100%;padding:14px;border:0;border-radius:12px;background:#1B1D22;color:#fff;font-weight:700;font-size:1rem">Actualizar ahora</button>' +
-      '<p style="margin:14px 0 0;font-size:.8rem;color:#5F6876">Detalle: <span id="avDet"></span></p></div>';
-    document.body.appendChild(d);
-    document.getElementById("avDet").textContent = String(ultimoError || "sin detalle").slice(0, 200);
-    document.getElementById("avAct").onclick = function () {
-      var fin = function () { location.replace(location.pathname + "?act=" + new Date().getTime() + location.hash); };
-      try {
-        var tareas = [];
-        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) tareas.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
-        if (window.caches) tareas.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
-        Promise.all(tareas).then(fin, fin);
-      } catch (x) { fin(); }
-    };
-  }
-  window.addEventListener("load", function () { setTimeout(aviso, 2500); });
-})();
-</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Factura 606</title>
-<meta name="theme-color" content="#E4E9EE">
+<meta name="theme-color" content="#14213D">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2026.11.18-5">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -65,7 +34,7 @@
 
 <!-- ================= Navegación ================= -->
 <nav class="nav" aria-label="Módulos">
-  <div class="nav-marca"><span class="marca-606">606</span><span>Factura 606</span></div>
+  <div class="nav-marca"><span>606</span>Factura 606</div>
   <a href="#inicio" data-v="inicio" aria-label="Inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5V20H4z"/><path d="M10 20v-5h4v5"/></svg><span>Inicio</span></a>
   <a href="#clientes" data-v="clientes" aria-label="Clientes"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Clientes</span></a>
   <a href="#capturar" data-v="capturar" class="nav-scan" aria-label="Escanear"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg><span>Escanear</span></a>
@@ -79,11 +48,11 @@
   <!-- ================= INICIO ================= -->
   <section class="vista" id="v-inicio" hidden>
     <div class="hero">
-      <p class="hero-sub">606 de</p>
+      <p class="hero-sub" id="saludo"></p>
       <h1 class="hero-mes" id="heroMes"></h1>
     </div>
     <div class="pills" id="pills"></div>
-    <div class="bloques" id="cifras"></div>
+    <div class="cifras" id="cifras"></div>
     <div class="pila" id="pila"></div>
     <a class="mas-carpetas" href="#clientes" id="masCarpetas" hidden></a>
   </section>
@@ -96,15 +65,14 @@
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
         <input type="search" id="buscarCliente" placeholder="Buscar cliente o RNC">
       </div>
-      <button class="btn" id="btnNuevoCliente"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>
+      <button class="btn" id="btnNuevoCliente"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Cliente</button>
     </div>
     <div id="listaClientes"></div>
   </section>
 
   <!-- ================= CAPTURAR ================= -->
   <section class="vista" id="v-capturar" hidden>
-    <div class="det-cli" id="capCab"></div>
-    <div class="cifras-det" id="capCifras"></div>
+    <div class="cifras" id="capCifras"></div>
     <div id="bandeja"></div>
     <div class="modos">
       <button class="modo principal" id="mRafaga">
@@ -151,24 +119,10 @@
   <!-- ================= EXPORTAR ================= -->
   <section class="vista" id="v-exportar" hidden>
     <h1 class="titulo-vista" id="expTitulo"></h1>
-    <div class="card rango">
-      <div class="rango-cab"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><b>Período a exportar</b></div>
-      <div class="par">
-        <label class="campo"><span>Desde</span><select id="expDesde"></select></label>
-        <label class="campo"><span>Hasta</span><select id="expHasta"></select></label>
-      </div>
-      <div class="chips rango-rapido" id="rangoRapido">
-        <button class="chip" data-r="actual">Mes del panel</button>
-        <button class="chip" data-r="anterior">Mes anterior</button>
-        <button class="chip" data-r="tres">Últimos 3 meses</button>
-        <button class="chip" data-r="anio">Este año</button>
-        <button class="chip" data-r="pasado">Año pasado</button>
-      </div>
-    </div>
     <div class="bloque excel-todos">
-      <h2 class="seccion-tit"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen general</h2>
-      <p class="nota-izq" id="expTodosTxt" hidden></p>
-      <div class="tabla" id="listaExcel"></div>
+      <h2>Excel por cliente</h2>
+      <p class="nota-izq" id="expTodosTxt"></p>
+      <div class="filas" id="listaExcel"></div>
       <button class="btn ancho" id="btnXlsxTodos">Descargar el Excel de todos</button>
     </div>
 
@@ -178,9 +132,8 @@
 
     <div class="export-principal">
       <div>
-        <h3><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>Pasar a la herramienta 606 de la DGII</h3>
+        <h3>Herramienta 606 de la DGII</h3>
         <p>El Excel tiene la misma distribución de la herramienta: el encabezado en C4 y C5, y las facturas desde la fila 12 en las columnas B a Z.</p>
-        <p class="nota-rango" id="notaRango" hidden></p>
       </div>
       <ol class="pasos-dgii">
         <li><span><b>Encabezado.</b> Copia el encabezado y pégalo en la celda <b>C4</b> de la herramienta. Se llenan el RNC (C4) y el período (C5).</span>
@@ -190,7 +143,7 @@
           <button class="btn sec chico" id="btnCopiar">Copiar filas</button></li>
         <li><span><b>Completa y valida.</b> Llena las casillas que faltan, pulsa <b>Validar</b> y luego <b>Generar archivo</b>.</span></li>
       </ol>
-      <div class="fila-btn"><button class="btn excel" id="btnXlsx"><svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg>Descargar Excel</button></div>
+      <div class="fila-btn"><button class="btn" id="btnXlsx">Descargar Excel</button></div>
       <details class="formato">
         <summary>Casillas que se llenan solas</summary>
         <div class="casillas" id="casillas"></div>
@@ -198,7 +151,7 @@
       </details>
     </div>
 
-    <h2 class="sub-vista">Otros formatos</h2>
+    <h2 class="seccion-tit">Otros formatos</h2>
     <div class="grupo lista-ajustes">
       <button class="fila-accion" id="btnTxt"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg></span><span>Archivo TXT<small>El que se sube en la Oficina Virtual</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
       <button class="fila-accion" id="btnCsv"><span class="ic-tile"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg></span><span>CSV con detalle<small>Incluye el nombre del suplidor</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -232,11 +185,6 @@
       <input type="file" id="fileImport" accept="application/json,.json" hidden>
       <button class="fila-accion" id="btnEjemplo"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><span>Cargar datos de ejemplo<small>Cuatro clientes con facturas para probar</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
-    <h2 class="seccion-tit">Aplicación</h2>
-    <div class="grupo lista-ajustes">
-      <div class="fila-accion estatica"><span class="ic-tile"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 12l2 2 4-4"/></svg></span><span>Versión instalada<small id="ajVersion"></small></span></div>
-      <button class="fila-accion" id="btnActualizar"><span class="ic-tile"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></svg></span><span>Forzar actualización<small>Borra la copia guardada y descarga la última versión. Tus datos no se borran.</small></span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    </div>
     <p class="nota">Todo se guarda solo en este dispositivo. Haz respaldos a menudo.</p>
   </section>
 </main>
@@ -264,7 +212,7 @@
     </div>
     <label class="campo"><span>Los montos leídos van a</span>
       <select name="destino"><option value="bienes">Bienes</option><option value="servicios">Servicios</option></select></label>
-    <fieldset class="colores"><legend>Color del cliente</legend><div class="swatches" id="swatches"></div></fieldset>
+    <fieldset class="colores"><legend>Color de la carpeta</legend><div class="swatches" id="swatches"></div></fieldset>
     <div class="fila-btn">
       <button type="button" class="btn fantasma peligro-txt" id="btnBorrarCliente">Borrar</button>
       <span style="flex:1"></span>
@@ -428,10 +376,10 @@
 <!-- Bienvenida -->
 <dialog id="dlgBienvenida" class="pantalla bienvenida">
   <div class="bv-cuerpo">
-    <div class="bv-carpeta" aria-hidden="true"><i></i><i></i><i>606</i></div>
+    <div class="bv-recibo" aria-hidden="true"><span></span><span></span><span></span><span class="corto"></span><b>606</b></div>
     <h1>El 606 de todos tus clientes, en una sola app</h1>
     <ol class="bv-pasos">
-      <li><span><b>Agrega tus clientes</b> de iguala con su RNC. Cada uno es una carpeta.</span></li>
+      <li><span><b>Agrega tus clientes</b> de iguala con su RNC.</span></li>
       <li><span><b>Escanea en ráfaga</b> los QR o sube las fotos en lote. Revisa solo lo que la app marque.</span></li>
       <li><span><b>Descarga el Excel</b> y pégalo en la herramienta de la DGII.</span></li>
     </ol>
@@ -445,9 +393,9 @@
 <div class="cola" id="cola"></div>
 <div class="toast" id="toast" role="status"><span id="toastTxt"></span><button id="toastBtn" hidden></button></div>
 
-<script src="catalogos.js?v=2026.11.18-5"></script>
-<script src="lector.js?v=2026.11.18-5"></script>
-<script src="xlsx.js?v=2026.11.18-5"></script>
-<script src="app.js?v=2026.11.18-5"></script>
+<script src="catalogos.js"></script>
+<script src="lector.js"></script>
+<script src="xlsx.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
